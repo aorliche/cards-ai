@@ -123,7 +123,7 @@ class Hand {
 		// left, right, top, bottom
 		this.lrtb = params.lrtb ?? 'bottom';
 		this.offset = params.offset ?? 0;
-		this.width = params.width ?? 250;
+		this.width = params.width ?? 300;
 		this.defSep = params.defSep ?? 30;
 		this.cards = [];
 	}
@@ -143,16 +143,49 @@ class Hand {
 		}
 		const xfms = [];
 		for (let i=0; i<n; i++) {
-			const ori = this.width/2-this.cards[0].width/2;
-			const cori = ori - 0.5*sep*(n-1) + sep*i;
 			this.ctx.save();
-			this.ctx.translate(cori, 0);
 			if (this.lrtb == 'bottom') {
+				const ori = this.width/2-this.cards[0].width/2;
+				const cori = ori - 0.5*sep*(n-1) + sep*i;
+				this.ctx.translate(cori, 0);
 				const dx = this.canvas.width/2-this.width/2;
 				const dy = this.canvas.height-2*this.cards[0].height/3;
 				this.ctx.translate(dx, dy);
 				this.ctx.rotate(-0.02*(n-1) + 0.04*i);
-				this.ctx.translate(0, Math.abs(-0.25*(n-1) + 0.5*i)**2);
+				this.ctx.translate(0, 2*Math.abs(-0.25*(n-1) + 0.5*i)**2);
+				xfms.push(this.ctx.getTransform());
+			} else if (this.lrtb == 'top') {
+				const ori = this.width/2+this.cards[0].width/2;
+				const cori = ori + 0.5*sep*(n-1) - sep*i;
+				this.ctx.translate(cori, 0);
+				const dx = this.canvas.width/2-this.width/2;
+				const dy = 2*this.cards[0].height/3;
+				this.ctx.translate(dx, dy);
+				this.ctx.rotate(3.14);
+				this.ctx.rotate(-0.02*(n-1) + 0.04*i);
+				this.ctx.translate(0, 2*Math.abs(0.25*(n-1) - 0.5*i)**2);
+				xfms.push(this.ctx.getTransform());
+			} else if (this.lrtb == 'left') {
+				const ori = this.width/2-this.cards[0].width/2;
+				const cori = ori - 0.5*sep*(n-1) + sep*i;
+				this.ctx.translate(0, cori);
+				const dy = this.canvas.height/2-this.width/2;
+				const dx = 2*this.cards[0].height/3;
+				this.ctx.translate(dx, dy);
+				this.ctx.rotate(3.14/2);
+				this.ctx.rotate(-0.02*(n-1) + 0.04*i);
+				this.ctx.translate(0, 2*Math.abs(0.25*(n-1) - 0.5*i)**2);
+				xfms.push(this.ctx.getTransform());
+			} else if (this.lrtb == 'right') {
+				const ori = this.width/2+this.cards[0].width/2;
+				const cori = ori + 0.5*sep*(n-1) - sep*i;
+				this.ctx.translate(0, cori);
+				const dy = this.canvas.height/2-this.width/2;
+				const dx = this.canvas.width-2*this.cards[0].height/3;
+				this.ctx.translate(dx, dy);
+				this.ctx.rotate(-3.14/2);
+				this.ctx.rotate(-0.02*(n-1) + 0.04*i);
+				this.ctx.translate(0, 2*Math.abs(0.25*(n-1) - 0.5*i)**2);
 				xfms.push(this.ctx.getTransform());
 			}
 			this.ctx.restore();
