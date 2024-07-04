@@ -1,4 +1,4 @@
-export {loadCardImages, onLoaded, Button, Card, Hand, Board};
+export {loadCardImages, onLoaded, loadImage, Button, Stack, Card, Hand, Board};
 
 import {drawText} from './util.js';
 
@@ -6,6 +6,12 @@ const cardImages = {};
 let imagesLoaded = 0;
 const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
 const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'ace'];
+
+function loadImage(src) {
+	const img = new Image();
+	img.src = src;
+	return img;
+}
 
 function loadCardImages() {
 	suits.forEach(s => {
@@ -46,6 +52,7 @@ const buttonCanvas = document.createElement('canvas');
 
 class Button {
 	constructor(params) {
+		this.img = params.img ?? null;
 		this.text = params.text ?? 'Button';
 		this.cb = params.cb ?? null;
 		this.font = params.font ?? (this.cb ? '18px sans' : '16px sans');
@@ -59,12 +66,18 @@ class Button {
 	}
 
 	get width() {
+		if (this.img) {
+			return this.img.width;
+		}
 		const xt = this.tm.width;
 		const xb = this.cb ? this.padding : 0;
 		return xt + xb;
 	}
 
 	get height() {
+		if (this.img) {
+			return this.img.height;
+		}
 		if (this.cb) {
 			return 40;
 		}
@@ -74,7 +87,11 @@ class Button {
 	}
 	
 	draw(ctx) {
-		if (this.cb) {
+		if (this.img) {
+			ctx.save();
+			ctx.drawImage(this.img, 0, 0);
+			ctx.restore();
+		} else if (this.cb) {
 			ctx.save();
 			ctx.lineWidth = 3;
 			ctx.strokeStyle = '#a2a';
@@ -149,6 +166,55 @@ class Card {
 	}
 }
 
+class Stack {
+	constructor(params) {
+		this.board = params.board;
+		if (!this.board) {
+			throw Error('Stack constructor not passed board');
+		}
+		this.board.stacks.push(this);
+		this.ctx = this.board.ctx;
+		this.cards = params.cards ?? [];
+		this.dy = 20;
+		this.dx = 10;
+	}
+
+	get stackIndex() {
+		for (let i=0; i<this.board.stacks.length; i++) {
+			if (this.board.stacks[i] == this) return i;
+		}
+		return -1;
+	}
+
+	getCardTransforms() {
+		const sxfm = this.board.getStackTransforms()[this.stackIndex];
+		if (!sxfm) {
+			return null;
+		}
+		const xfms = [];
+		for (let i=0; i<this.cards.length; i++) {
+			this.ctx.save();
+			this.ctx.setTransform(sxfm);
+			this.ctx.translate(i*this.dx, i*this.dy);
+			xfms.push(this.ctx.getTransform());
+			this.ctx.restore();
+		}
+		return xfms;
+	}
+
+	draw() {
+		const xfms = this.getCardTransforms();
+		if (xfms) {
+			for (let i=0; i<xfms.length; i++) {
+				this.ctx.save();
+				this.ctx.setTransform(xfms[i]);
+				this.cards[i].draw(this.ctx);
+				this.ctx.restore();
+			}
+		}
+	}
+}
+
 class Board {
 	constructor(params) {
 		this.canvas = params.canvas;
@@ -157,10 +223,39 @@ class Board {
 		}
 		this.ctx = this.canvas.getContext('2d');
 		this.hands = [];
+		this.stacks = [];
+	}
+
+	getStackTransforms() {
+		const xfms = [];
+		const n = this.stacks.length; 
+		let w = 0;
+		let h = 0;
+		const p = [0];
+		for (let i=0; i<n; i++) {
+			if (this.stacks[i].cards.length > 0) {
+				w = this.stacks[i].cards[0].width;
+				h = this.stacks[i].cards[0].height;
+				break;
+			}
+		}
+		for (let i=0; i<n; i++) {
+			p.push(p.at(-1) + w + 20);
+		}
+		const dx = this.canvas.width/2 - p.at(-1)/2;
+		const dy = this.canvas.height/2 - h/2;
+		for (let i=0; i<n; i++) {
+			this.ctx.save();
+			this.ctx.translate(dx + p[i], dy);
+			xfms.push(this.ctx.getTransform());
+			this.ctx.restore();
+		}
+		return xfms;
 	}
 
 	draw() {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		this.stacks.forEach(s => s.draw());
 		this.hands.forEach(h => h.draw());
 	}
 
