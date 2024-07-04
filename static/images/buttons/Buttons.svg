@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
+   version="1.1"
+   id="svg5"
+   sodipodi:docname="Buttons.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="0.54965629"
+     inkscape:cx="344.76091"
+     inkscape:cy="486.66777"
+     inkscape:window-width="1616"
+     inkscape:window-height="824"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:#ffcc00;stroke:#000000;stroke-width:0.105833"
+       id="rect392"
+       width="47.564526"
+       height="23.417482"
+       x="39.026001"
+       y="93.875816"
+       ry="10.245853"
+       inkscape:export-filename="pass.png"
+       inkscape:export-xdpi="43.191193"
+       inkscape:export-ydpi="43.191193" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:16.9333px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke:#000000;stroke-width:0.105833"
+       x="43.905426"
+       y="110.95286"
+       id="text236"><tspan
+         sodipodi:role="line"
+         id="tspan234"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke-width:0.105833"
+         x="43.905426"
+         y="110.95286">Pass</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:16.9333px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffd42a;fill-opacity:1;stroke:#000000;stroke-width:0.105833"
+       x="37.502003"
+       y="65.875145"
+       id="text236-62"
+       inkscape:export-filename="pass_notice.png"
+       inkscape:export-xdpi="44.720585"
+       inkscape:export-ydpi="44.720585"><tspan
+         sodipodi:role="line"
+         id="tspan234-9"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffd42a;fill-opacity:1;stroke-width:0.105833"
+         x="37.502003"
+         y="65.875145">Pass</tspan></text>
+    <g
+       id="g1619"
+       transform="translate(-0.28204211,1.7830007)"
+       inkscape:export-filename="okay.png"
+       inkscape:export-xdpi="43.191177"
+       inkscape:export-ydpi="43.191177">
+      <rect
+         style="fill:#71c837;stroke:#000000;stroke-width:0.111367"
+         id="rect392-3"
+         width="52.680977"
+         height="23.411949"
+         x="39.31081"
+         y="118.10555"
+         ry="10.243432" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:16.9333px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke:#000000;stroke-width:0.105833"
+         x="44.187469"
+         y="135.17982"
+         id="text236-6"><tspan
+           sodipodi:role="line"
+           id="tspan234-7"
+           style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke-width:0.105833"
+           x="44.187469"
+           y="135.17982">Okay</tspan></text>
+    </g>
+    <g
+       id="g1624"
+       transform="translate(-1.3124649)"
+       inkscape:export-filename="pick_up.png"
+       inkscape:export-xdpi="43.191208"
+       inkscape:export-ydpi="43.191208">
+      <rect
+         style="fill:#ff8080;stroke:#000000;stroke-width:0.130302"
+         id="rect392-3-5"
+         width="72.17598"
+         height="23.393015"
+         x="40.3507"
+         y="145.90799"
+         ry="10.235147" />
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:16.9333px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke:#000000;stroke-width:0.105833"
+         x="45.217888"
+         y="162.97281"
+         id="text236-6-3"><tspan
+           sodipodi:role="line"
+           id="tspan234-7-5"
+           style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke-width:0.105833"
+           x="45.217888"
+           y="162.97281">Pick Up</tspan></text>
+    </g>
+    <rect
+       style="fill:#ffcc00;stroke:#ff0000;stroke-width:1.106;stroke-dasharray:none;stroke-opacity:1"
+       id="rect392-36"
+       width="47.564526"
+       height="23.417482"
+       x="125.32132"
+       y="93.341339"
+       ry="10.245853"
+       inkscape:export-filename="pass_over.png"
+       inkscape:export-xdpi="42.465412"
+       inkscape:export-ydpi="42.465412" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:16.9333px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke:#ff0000;stroke-width:0.689;stroke-opacity:1;stroke-dasharray:none"
+       x="130.20074"
+       y="110.41838"
+       id="text236-7"><tspan
+         sodipodi:role="line"
+         id="tspan234-5"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke-width:0.689;stroke:#ff0000;stroke-opacity:1;stroke-dasharray:none"
+         x="130.20074"
+         y="110.41838">Pass</tspan></text>
+    <rect
+       style="fill:#71c837;stroke:#ff0000;stroke-width:1;stroke-dasharray:none;stroke-opacity:1"
+       id="rect392-3-56"
+       width="52.680977"
+       height="23.411949"
+       x="125.32409"
+       y="119.35407"
+       ry="10.243432"
+       inkscape:export-filename="okay_over.png"
+       inkscape:export-xdpi="42.659428"
+       inkscape:export-ydpi="42.659428" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:16.9333px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke:#ff0000;stroke-width:0.781;stroke-dasharray:none;stroke-opacity:1"
+       x="130.20074"
+       y="136.42834"
+       id="text236-6-2"><tspan
+         sodipodi:role="line"
+         id="tspan234-7-9"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke:#ff0000;stroke-width:0.781;stroke-dasharray:none;stroke-opacity:1"
+         x="130.20074"
+         y="136.42834">Okay</tspan></text>
+    <rect
+       style="fill:#ff8080;stroke:#ff0000;stroke-width:1;stroke-dasharray:none;stroke-opacity:1"
+       id="rect392-3-5-2"
+       width="72.17598"
+       height="23.393015"
+       x="125.33356"
+       y="145.3735"
+       ry="10.235147"
+       inkscape:export-filename="pick_up_over.png"
+       inkscape:export-xdpi="42.692539"
+       inkscape:export-ydpi="42.692539" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:16.9333px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke:#ff0000;stroke-width:0.781;stroke-dasharray:none;stroke-opacity:1"
+       x="130.20074"
+       y="162.43832"
+       id="text236-6-3-7"><tspan
+         sodipodi:role="line"
+         id="tspan234-7-5-0"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ffffff;stroke:#ff0000;stroke-width:0.781;stroke-dasharray:none;stroke-opacity:1"
+         x="130.20074"
+         y="162.43832">Pick Up</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:16.9333px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ff8080;fill-opacity:1;stroke:#000000;stroke-width:0.105833"
+       x="37.502003"
+       y="85.564751"
+       id="text236-6-3-1"
+       inkscape:export-filename="pick_up_text.png"
+       inkscape:export-xdpi="44.720585"
+       inkscape:export-ydpi="44.720585"><tspan
+         sodipodi:role="line"
+         id="tspan234-7-5-2"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#ff8080;fill-opacity:1;stroke-width:0.105833"
+         x="37.502003"
+         y="85.564751">Pick Up</tspan></text>
+  </g>
+</svg>

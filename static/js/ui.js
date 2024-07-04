@@ -1,9 +1,11 @@
-export {loadCardImages, onLoaded, Card, Hand, Board};
+export {loadCardImages, onLoaded, Button, Card, Hand, Board};
 
 const cardImages = {};
-let cardImagesLoaded = 0;
+const buttonImages = {};
+let imagesLoaded = 0;
 const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
 const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'ace'];
+const buttons = ['pass_text', 'pick_up_text', 'pass', 'pass_over', 'okay', 'okay_over', 'pick_up', 'pick_up_over'];
 
 function loadCardImages() {
 	suits.forEach(s => {
@@ -12,7 +14,7 @@ function loadCardImages() {
 			const img = new Image();
 			img.src = `/cards/fronts/${name}.png`;
 			img.addEventListener('load', () => {
-				cardImagesLoaded++;
+				imagesLoaded++;
 			});
 			cardImages[name] = img;
 		});
@@ -20,19 +22,60 @@ function loadCardImages() {
 	const img = new Image();
 	img.src = '/cards/backs/astronaut.png';
 	img.addEventListener('load', () => {
-		cardImagesLoaded++;
+		imagesLoaded++;
 	});
 	cardImages['back'] = img;
+	buttons.forEach(name => {
+		const img = new Image();
+		img.src = `/images/buttons/${name}.png`;
+		img.addEventListener('load', () => {
+			imagesLoaded++;
+		});
+		buttonImages[name] = img;
+	});
+}
+
+function totalImages() {
+	return suits.length*ranks.length + 1 + buttons.length;
 }
 
 function onLoaded(fn) {
 	setTimeout(() => {
-		if (cardImagesLoaded == 53) {
+		if (imagesLoaded == totalImages()) {
 			fn();
 		} else {
 			onLoaded(fn);
 		}
 	}, 10);
+}
+
+class Button {
+	constructor(name, cb) {
+		this.name_ = name;
+		this.cb = cb;
+	}
+
+	get width() {
+		return buttonImages[this.name].width;
+	}
+
+	get height() {
+		return buttonImages[this.name].height;
+	}
+
+	get name() {
+		if (this.hovering) {
+			const n = this.name_ + '_over';
+			if (buttons.includes(n)) {
+				return n;
+			}
+		}
+		return this.name_;
+	}
+	
+	draw(ctx) {
+		ctx.drawImage(buttonImages[this.name], 0, 0, this.width, this.height);
+	}
 }
 
 class Card {
@@ -74,6 +117,10 @@ class Card {
 			return;
 		}
 		const dy = this.hovering ? -20 : 0;
+		if (this.selected) {
+			ctx.fillStyle = '#f00';
+			ctx.fillRect(-2, dy-2, this.width+4, this.height+4);
+		}
 		ctx.drawImage(cardImages[this.name], 0, dy, this.width, this.height);
 	}
 }
@@ -106,6 +153,9 @@ class Board {
 			h.cards.forEach(c => {
 				c.hovering = false;
 			});
+			h.buttons.forEach(b => {
+				b.hovering = false;
+			});
 		});
 		this.draw();
 	}
@@ -126,6 +176,33 @@ class Hand {
 		this.width = params.width ?? 300;
 		this.defSep = params.defSep ?? 30;
 		this.cards = [];
+		this.buttons = [];
+	}
+
+	getButtonTransforms() {
+		const xfms = [];
+		if (this.lrtb == 'bottom') {
+			const ori = this.canvas.width/2;
+			let w = [0];
+			let h = 0;
+			for (let i=0; i<this.buttons.length; i++) {
+				w.push(w.at(-1) + this.buttons[i].width + 10);
+				if (this.buttons[i].height > h) {
+					h = this.buttons[i].height;
+				}
+			}
+			for (let i=0; i<this.buttons.length; i++) {
+				w[i] -= w.at(-1)/2;
+				const dx = ori + w[i];
+				const ch = this.cards.length > 0 ? this.cards[0].height + 50 : 50;
+				const dy = this.canvas.height - ch + (h - this.buttons[i].height)/2;
+				this.ctx.save();
+				this.ctx.translate(dx, dy); 
+				xfms.push(this.ctx.getTransform());
+				this.ctx.restore();
+			}
+		}
+		return xfms;
 	}
 
 	getCardTransforms() {
@@ -203,6 +280,15 @@ class Hand {
 				this.ctx.restore();
 			}
 		}
+		const bxfms = this.getButtonTransforms();
+		if (bxfms) {
+			for (let i=0; i<bxfms.length; i++) {
+				this.ctx.save();
+				this.ctx.setTransform(bxfms[i]);
+				this.buttons[i].draw(this.ctx);
+				this.ctx.restore();
+			}
+		}
 	}
 
 	mousemove(e) {
@@ -213,6 +299,16 @@ class Hand {
 				const p = point.matrixTransform(xfms[i].inverse());
 				if (p.x > 0 && p.x < this.cards[0].width && p.y > 0 && p.y < this.cards[0].height) {
 					this.cards[i].hovering = true;
+					break;
+				}
+			}
+		}
+		const bxfms = this.getButtonTransforms();
+		if (bxfms) {
+			for (let i=bxfms.length-1; i>=0; i--) {
+				const p = point.matrixTransform(bxfms[i].inverse());
+				if (p.x > 0 && p.x < this.buttons[i].width && p.y > 0 && p.y < this.buttons[i].height) {
+					this.buttons[i].hovering = true;
 					break;
 				}
 			}

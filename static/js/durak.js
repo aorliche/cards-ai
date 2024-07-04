@@ -1,4 +1,4 @@
-import {loadCardImages, onLoaded, Card, Hand, Board} from './ui.js';
+import {loadCardImages, onLoaded, Button, Card, Hand, Board} from './ui.js';
 import {$, $$} from './util.js';
 
 window.addEventListener('load', () => {
@@ -23,6 +23,10 @@ window.addEventListener('load', () => {
 		hand.cards.push(new Card('hearts', '3'));
 		hand.cards.push(new Card('hearts', '3'));
 		hand.cards.push(new Card('hearts', '3'));
+		hand.cards.at(-2).selected = true;
+
+		hand.buttons.push(new Button('pick_up_text'));
+		hand.buttons.push(new Button('okay'));
 	});
 
 	canvas.addEventListener('mousemove', e => {
