@@ -1,11 +1,11 @@
 export {loadCardImages, onLoaded, Button, Card, Hand, Board};
 
+import {drawText} from './util.js';
+
 const cardImages = {};
-const buttonImages = {};
 let imagesLoaded = 0;
 const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
 const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'ace'];
-const buttons = ['pass_text', 'pick_up_text', 'pass', 'pass_over', 'okay', 'okay_over', 'pick_up', 'pick_up_over'];
 
 function loadCardImages() {
 	suits.forEach(s => {
@@ -25,18 +25,10 @@ function loadCardImages() {
 		imagesLoaded++;
 	});
 	cardImages['back'] = img;
-	buttons.forEach(name => {
-		const img = new Image();
-		img.src = `/images/buttons/${name}.png`;
-		img.addEventListener('load', () => {
-			imagesLoaded++;
-		});
-		buttonImages[name] = img;
-	});
 }
 
 function totalImages() {
-	return suits.length*ranks.length + 1 + buttons.length;
+	return suits.length*ranks.length + 1;
 }
 
 function onLoaded(fn) {
@@ -49,32 +41,64 @@ function onLoaded(fn) {
 	}, 10);
 }
 
+// So you don't have to pass ctx to button constructor
+const buttonCanvas = document.createElement('canvas');
+
 class Button {
-	constructor(name, cb) {
-		this.name_ = name;
-		this.cb = cb;
+	constructor(params) {
+		this.text = params.text ?? 'Button';
+		this.cb = params.cb ?? null;
+		this.font = params.font ?? (this.cb ? '18px sans' : '16px sans');
+		this.padding = params.padding ?? 20;
+		// Measure text width and height
+		const ctx = buttonCanvas.getContext('2d');
+		ctx.save();
+		ctx.font = this.font;
+		this.tm = ctx.measureText(this.text);
+		ctx.restore();
 	}
 
 	get width() {
-		return buttonImages[this.name].width;
+		const xt = this.tm.width;
+		const xb = this.cb ? this.padding : 0;
+		return xt + xb;
 	}
 
 	get height() {
-		return buttonImages[this.name].height;
-	}
-
-	get name() {
-		if (this.hovering) {
-			const n = this.name_ + '_over';
-			if (buttons.includes(n)) {
-				return n;
-			}
+		if (this.cb) {
+			return 40;
 		}
-		return this.name_;
+		const yp = this.tm.actualBoundingBoxAscent;
+		const ym = this.tm.actualBoundingBoxDescent;
+		return yp + ym;
 	}
 	
 	draw(ctx) {
-		ctx.drawImage(buttonImages[this.name], 0, 0, this.width, this.height);
+		if (this.cb) {
+			ctx.save();
+			ctx.lineWidth = 3;
+			ctx.strokeStyle = '#a2a';
+			ctx.fillStyle = this.hovering ? '#f6f' : '#77f';
+			ctx.font = 'bold ' + this.font;
+			ctx.beginPath();
+			ctx.roundRect(0, 0, this.width, this.height, 3*this.padding/4);
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.roundRect(1, 1, this.width-2, this.height-2, 3*this.padding/4);
+			ctx.fill();
+			ctx.fillStyle = '#fff';
+			const yp = this.tm.actualBoundingBoxAscent;
+			const ym = this.tm.actualBoundingBoxDescent;
+			const diff = this.height - (yp + this.padding);
+			ctx.fillText(this.text, this.padding/2, this.padding/2+yp+diff/2-2);
+			ctx.restore();
+		} else {
+			ctx.save();
+			ctx.fillStyle = '#000';
+			ctx.font = this.font;
+			ctx.fillText(this.text, 0, this.tm.actualBoundingBoxAscent);
+			ctx.restore();
+		}
 	}
 }
 
@@ -140,9 +164,18 @@ class Board {
 		this.hands.forEach(h => h.draw());
 	}
 
-	mousemove(e) {
-		this.mouseout();
+	mousedown(e) {
 		this.hands.forEach(h => {
+			h.mousedown(e);
+			h.mousemove(e);
+		});
+		this.draw();
+	}
+
+	mousemove(e) {
+		this.hands.forEach(h => {
+			h.cards.forEach(c => c.hovering = false);
+			h.buttons.forEach(b => b.hovering = false);
 			h.mousemove(e);
 		});
 		this.draw();
@@ -150,12 +183,14 @@ class Board {
 
 	mouseout() {
 		this.hands.forEach(h => {
-			h.cards.forEach(c => {
-				c.hovering = false;
-			});
-			h.buttons.forEach(b => {
-				b.hovering = false;
-			});
+			h.mouseout();
+		});
+		this.draw();
+	}
+
+	mouseup() {
+		this.hands.forEach(h => {
+			h.mouseup();
 		});
 		this.draw();
 	}
@@ -175,8 +210,10 @@ class Hand {
 		this.offset = params.offset ?? 0;
 		this.width = params.width ?? 300;
 		this.defSep = params.defSep ?? 30;
+		this.name = params.name ?? 'Unnamed';
 		this.cards = [];
 		this.buttons = [];
+		this.holding = null;
 	}
 
 	getButtonTransforms() {
@@ -194,8 +231,64 @@ class Hand {
 			for (let i=0; i<this.buttons.length; i++) {
 				w[i] -= w.at(-1)/2;
 				const dx = ori + w[i];
-				const ch = this.cards.length > 0 ? this.cards[0].height + 50 : 50;
+				const ch = this.cards.length > 0 ? 2*this.cards[0].height/3 + 60 : 60;
 				const dy = this.canvas.height - ch + (h - this.buttons[i].height)/2;
+				this.ctx.save();
+				this.ctx.translate(dx, dy); 
+				xfms.push(this.ctx.getTransform());
+				this.ctx.restore();
+			}
+		} else if (this.lrtb == 'top') {
+			const ori = this.canvas.width/2;
+			let w = [0];
+			let h = 0;
+			for (let i=0; i<this.buttons.length; i++) {
+				w.push(w.at(-1) + this.buttons[i].width + 10);
+				if (this.buttons[i].height > h) {
+					h = this.buttons[i].height;
+				}
+			}
+			for (let i=0; i<this.buttons.length; i++) {
+				w[i] -= w.at(-1)/2;
+				const dx = ori + w[i];
+				const ch = this.cards.length > 0 ? 2*this.cards[0].height/3 + 20 : 20;
+				const dy = ch + (h - this.buttons[i].height)/2;
+				this.ctx.save();
+				this.ctx.translate(dx, dy); 
+				xfms.push(this.ctx.getTransform());
+				this.ctx.restore();
+			}
+		} else if (this.lrtb == 'left') {
+			const ori = this.canvas.height/2;
+			let h = [0];
+			for (let i=0; i<this.buttons.length; i++) {
+				h.push(h.at(-1) + this.buttons[i].height + 10);
+			}
+			for (let i=0; i<this.buttons.length; i++) {
+				h[i] -= h.at(-1)/2;
+				const dy = ori + h[i];
+				const ch = this.cards.length > 0 ? 2*this.cards[0].height/3 + 20 : 20;
+				const dx = ch;
+				this.ctx.save();
+				this.ctx.translate(dx, dy); 
+				xfms.push(this.ctx.getTransform());
+				this.ctx.restore();
+			}
+		} else if (this.lrtb == 'right') {
+			const ori = this.canvas.height/2;
+			let h = [0];
+			let w = 0;
+			for (let i=0; i<this.buttons.length; i++) {
+				h.push(h.at(-1) + this.buttons[i].height + 10);
+				if (this.buttons[i].width > w) {
+					w = this.buttons[i].width;
+				}
+			}
+			for (let i=0; i<this.buttons.length; i++) {
+				h[i] -= h.at(-1)/2;
+				const dy = ori + h[i];
+				const ch = this.cards.length > 0 ? 2*this.cards[0].height/3 + 20 : 20;
+				const dx = this.canvas.width - ch - w;
 				this.ctx.save();
 				this.ctx.translate(dx, dy); 
 				xfms.push(this.ctx.getTransform());
@@ -289,6 +382,21 @@ class Hand {
 				this.ctx.restore();
 			}
 		}
+		if (this.holding) {
+			this.ctx.save();
+			this.ctx.translate(this.holdingPos.x-this.holding.width/2, this.holdingPos.y-this.holding.height/2);
+			this.holding.draw(this.ctx);
+			this.ctx.restore();
+		}
+		if (this.lrtb == 'bottom') {
+			drawText(this.ctx, this.name, {x: this.canvas.width/2 - this.width/2 - 20, y: this.canvas.height - 10}, 'black', '16px sans');
+		} else if (this.lrtb == 'top') {
+			drawText(this.ctx, this.name, {x: this.canvas.width/2 - this.width/2 - 20, y: 25}, 'black', '16px sans');
+		} else if (this.lrtb == 'left') {
+			drawText(this.ctx, this.name, {x: 40, y: this.canvas.height/2 - this.width/2 - 10}, 'black', '16px sans');
+		} else if (this.lrtb == 'right') {
+			drawText(this.ctx, this.name, {x: this.canvas.width - 40, y: this.canvas.height/2 - this.width/2 - 10}, 'black', '16px sans');
+		}
 	}
 
 	mousemove(e) {
@@ -312,6 +420,41 @@ class Hand {
 					break;
 				}
 			}
+		}
+		if (this.holding) {
+			this.holdingPos = point;
+		}
+	}
+
+	mousedown(e) {
+		for (let i=0; i<this.cards.length; i++) {
+			if (this.cards[i].hovering) {
+				this.cards[i].hovering = false;
+				this.holding = this.cards[i];
+				this.holdingPos = new DOMPoint(e.offsetX, e.offsetY);
+				this.cards.splice(i, 1);
+				break;
+			}
+		}
+	}
+
+	mouseout() {
+		this.cards.forEach(c => {
+			c.hovering = false;
+		});
+		this.buttons.forEach(b => {
+			b.hovering = false;
+		});
+		if (this.holding) {
+			this.cards.push(this.holding);
+			this.holding = null;
+		}
+	}
+
+	mouseup() {
+		if (this.holding) {
+			this.cards.push(this.holding);
+			this.holding = null;
 		}
 	}
 }
