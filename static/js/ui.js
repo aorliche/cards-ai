@@ -314,7 +314,7 @@ class Hand {
 	getButtonTransforms() {
 		const xfms = [];
 		if (this.lrtb == 'bottom') {
-			const ori = this.canvas.width/2;
+			const ori = this.offset + this.canvas.width/2;
 			let w = [0];
 			let h = 0;
 			for (let i=0; i<this.buttons.length; i++) {
@@ -334,7 +334,7 @@ class Hand {
 				this.ctx.restore();
 			}
 		} else if (this.lrtb == 'top') {
-			const ori = this.canvas.width/2;
+			const ori = this.offset + this.canvas.width/2;
 			let w = [0];
 			let h = 0;
 			for (let i=0; i<this.buttons.length; i++) {
@@ -413,7 +413,7 @@ class Hand {
 				const ori = this.width/2-this.cards[0].width/2;
 				const cori = ori - 0.5*sep*(n-1) + sep*i;
 				this.ctx.translate(cori, 0);
-				const dx = this.canvas.width/2-this.width/2;
+				const dx = this.offset + this.canvas.width/2-this.width/2;
 				const dy = this.canvas.height-2*this.cards[0].height/3;
 				this.ctx.translate(dx, dy);
 				this.ctx.rotate(-0.02*(n-1) + 0.04*i);
@@ -423,7 +423,7 @@ class Hand {
 				const ori = this.width/2+this.cards[0].width/2;
 				const cori = ori + 0.5*sep*(n-1) - sep*i;
 				this.ctx.translate(cori, 0);
-				const dx = this.canvas.width/2-this.width/2;
+				const dx = this.offset + this.canvas.width/2-this.width/2;
 				const dy = 2*this.cards[0].height/3;
 				this.ctx.translate(dx, dy);
 				this.ctx.rotate(3.14);
@@ -484,9 +484,9 @@ class Hand {
 			this.ctx.restore();
 		}
 		if (this.lrtb == 'bottom') {
-			drawText(this.ctx, this.name, {x: this.canvas.width/2 - this.width/2 - 20, y: this.canvas.height - 10}, 'black', '16px sans');
+			drawText(this.ctx, this.name, {x: this.offset + this.canvas.width/2 - this.width/2 - 20, y: this.canvas.height - 10}, 'black', '16px sans');
 		} else if (this.lrtb == 'top') {
-			drawText(this.ctx, this.name, {x: this.canvas.width/2 - this.width/2 - 20, y: 25}, 'black', '16px sans');
+			drawText(this.ctx, this.name, {x: this.offset + this.canvas.width/2 - this.width/2 - 20, y: 25}, 'black', '16px sans');
 		} else if (this.lrtb == 'left') {
 			drawText(this.ctx, this.name, {x: 40, y: this.canvas.height/2 - this.width/2 - 10}, 'black', '16px sans');
 		} else if (this.lrtb == 'right') {
