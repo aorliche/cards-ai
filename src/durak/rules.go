@@ -3,6 +3,7 @@ package durak
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 )
 
 type Verb int
@@ -105,12 +106,16 @@ type GameState struct {
     Defender int
     PickingUp bool
     Passed []bool
+	Deferring []bool
     Won []bool
     Trump Card
     Plays []Card
     Covers []Card
     Hands [][]Card
+	Known [][]Card
     Dir int
+	Deck []Card
+	CardsInDeck int
 }
 
 func NumNotUnk(cards []Card) int {
@@ -136,7 +141,24 @@ func LowestTrumpRank(trump Card, cards []Card) int {
 	return rank
 }
 
-func InitGameState(trump Card, hands [][]Card) *GameState {
+func InitGameState(nPlayers int) *GameState {
+	if nPlayers < 2 || nPlayers > 6 {
+		return nil
+	}
+	deck := GenerateDeck()
+	// Deal deck to players
+	hands := make([][]Card, nPlayers)
+	known := make([][]Card, nPlayers)
+	ci := 0
+	trump := deck[len(deck)-1]
+	for i := 0; i < nPlayers; i++ {
+		hands[i] = make([]Card, 0)
+		known[i] = make([]Card, 0)
+		for j := 0; j < 6; j++ {
+			hands[i] = append(hands[i], deck[ci])
+			ci++
+		}
+	}
 	// Determine who goes first
 	lowRank := -1
 	lowRankIdx := 0
@@ -154,12 +176,16 @@ func InitGameState(trump Card, hands [][]Card) *GameState {
         Defender: (lowRankIdx+1)%len(hands), 
         PickingUp: false, 
         Passed: make([]bool, len(hands)),
+		Deferring: make([]bool, len(hands)),
         Won: make([]bool, len(hands)),
         Trump: trump,
         Plays: make([]Card, 0),
         Covers: make([]Card, 0),
         Hands: hands,
+		Known: known,
         Dir: 1,
+		Deck: deck,
+		CardsInDeck: len(deck)-ci,
     }
 }
 
@@ -250,15 +276,225 @@ func (state *GameState) DefenderActions(player int) []Action {
         }
     }
     if len(state.Plays) > 0 && NumNotUnk(state.Covers) < len(state.Plays) {
-        res = append(res, Action{player, PickupVerb, UNK_CARD, UNK_CARD})
+        res = append(res, Action{player, PickUpVerb, UNK_CARD, UNK_CARD})
     }
     return res
 }
 
 func (state *GameState) PlayerActions(player int) []Action {
+	var acts []Action
+	hands := state.Mask(player)
     if player == state.Defender {
-        return state.DefenderActions(player)
+        acts = state.DefenderActions(player)
     } else {
-        return state.AttackerActions(player)
+        acts = state.AttackerActions(player)
     }
+	state.Hands = hands
+	return acts
+}
+
+func (state *GameState) NextRole(player int) int {
+    for i := 0; i < len(state.Hands); i++ {
+        p := player+((i+1)*state.Dir)
+        if p < 0 {
+            p += len(state.Hands)
+        }
+        if p >= len(state.Hands) {
+            p -= len(state.Hands)
+        }
+        if !state.Won[p] {
+            return p
+        }
+    }
+    panic("NextRole failed")
+}
+
+func (state *GameState) AllPassed() bool {
+    for i := 0; i < len(state.Hands); i++ {
+        if !state.Passed[i] && state.Defender != i && !state.Won[i] {
+            return false
+        }
+    }
+    return true
+}
+
+func (state *GameState) GameOver() bool {
+    if state.CardsInDeck > 0 {
+        return false
+    }
+    n := 0
+    for i := 0; i < len(state.Won); i++ {
+        if state.Won[i] {
+			n++
+		}
+    }
+    return n == len(state.Hands)-1
+}
+
+// This probably deals in correct order now
+func (state *GameState) Deal(defender int) {
+	for i := 0; i < len(state.Hands); i++ {
+		p := defender+((i+1)*state.Dir)
+        if p < 0 {
+            p += len(state.Hands)
+        }
+        if p >= len(state.Hands) {
+            p -= len(state.Hands)
+        }
+		for len(state.Hands[p]) < 6 {
+			if state.CardsInDeck == 0 {
+				// Check winner
+				if len(state.Hands[p]) == 0 {
+					state.Won[p] = true
+				}
+				break
+			} else {
+				j := len(state.Deck)-state.CardsInDeck
+				state.Hands[p] = append(state.Hands[p], state.Deck[j])
+				state.CardsInDeck--
+			}
+		}
+	}
+}
+
+func (state *GameState) TakeAction(action Action) {
+    switch action.Verb {
+        case PlayVerb: {
+            state.Plays = append(state.Plays, action.Card)
+            state.Covers = append(state.Covers, UNK_CARD)
+            RemoveCard(&state.Hands[action.Player], action.Card)
+			RemoveCard(&state.Known[action.Player], action.Card)
+			// Reset deferring
+            state.Deferring = make([]bool, len(state.Hands))
+			// Check win
+			if state.CardsInDeck == 0 && len(state.Hands[action.Player]) == 0 {
+				state.Won[action.Player] = true
+			}
+        }
+        case CoverVerb: {
+            for i := 0; i < len(state.Plays); i++ {
+                if action.Covering == state.Plays[i] {
+                    state.Covers[i] = action.Card
+                }
+            }
+            RemoveCard(&state.Hands[action.Player], action.Card)
+			RemoveCard(&state.Known[action.Player], action.Card)
+			// Reset deferring
+            state.Deferring = make([]bool, len(state.Hands))
+			// Check win
+			if state.CardsInDeck == 0 && len(state.Hands[action.Player]) == 0 {
+				state.Won[action.Player] = true
+			}
+        }
+        case ReverseVerb: {
+            state.Plays = append(state.Plays, action.Card)
+            state.Covers = append(state.Covers, UNK_CARD)
+            RemoveCard(&state.Hands[action.Player], action.Card)
+			RemoveCard(&state.Known[action.Player], action.Card)
+            state.Attacker, state.Defender = state.Defender, state.Attacker
+			// Reset deferring
+            state.Deferring = make([]bool, len(state.Hands))
+			// Change direction
+            state.Dir *= -1
+			// Check win
+			if state.CardsInDeck == 0 && len(state.Hands[action.Player]) == 0 {
+				state.Won[action.Player] = true
+			}
+        }
+        case PickUpVerb: {
+            state.PickingUp = true
+			// Reset deferring
+            state.Deferring = make([]bool, len(state.Hands))
+        }
+        case PassVerb: {
+            state.Passed[action.Player] = true
+            if !state.AllPassed() {
+                break
+            }
+			defender := state.Defender
+            if state.PickingUp {
+				// Pick up all cards
+                for i := 0; i < len(state.Plays); i++ {
+                    state.Hands[state.Defender] = append(state.Hands[state.Defender], state.Plays[i])
+					state.Known[state.Defender] = append(state.Known[state.Defender], state.Plays[i])
+                    if state.Covers[i] != UNK_CARD {
+                        state.Hands[state.Defender] = append(state.Hands[state.Defender], state.Covers[i])
+						state.Known[state.Defender] = append(state.Known[state.Defender], state.Covers[i])
+                    }
+                }
+                state.Attacker = state.NextRole(state.Defender) 
+                state.Defender = state.NextRole(state.Attacker)
+            } else {
+                state.Attacker = state.NextRole(state.Attacker) 
+                state.Defender = state.NextRole(state.Attacker)
+            }
+            state.Plays = make([]Card, 0)
+            state.Covers = make([]Card, 0)
+            state.PickingUp = false
+            state.Deferring = make([]bool, len(state.Hands))
+            state.Passed = make([]bool, len(state.Hands))
+			state.Deal(defender)
+        }
+        case DeferVerb: {
+            state.Deferring[action.Player] = true
+        }
+    }
+	// Check for a winner being marked as attacker or defender
+	if state.Won[state.Attacker] {
+		state.Attacker = state.NextRole(state.Attacker)
+		state.Defender = state.NextRole(state.Attacker)
+	} else if state.Won[state.Defender] {
+		state.Defender = state.NextRole(state.Defender)
+	}
+	state.Passed[state.Attacker] = false
+	state.Passed[state.Defender] = false
+}
+
+func (state *GameState) Clone() *GameState {
+    hands := make([][]Card, len(state.Hands))
+	known := make([][]Card, len(state.Known))
+    for i := 0; i < len(hands); i++ {
+        hands[i] = append(make([]Card, 0), state.Hands[i]...)
+        known[i] = append(make([]Card, 0), state.Known[i]...)
+    }
+    return &GameState {
+        Defender: state.Defender,
+        Attacker: state.Attacker,
+        PickingUp: state.PickingUp,
+        Deferring: append(make([]bool, 0), state.Deferring...),
+        Passed: append(make([]bool, 0), state.Passed...),
+        Won: append(make([]bool, 0), state.Won...),
+        Trump: state.Trump,
+        Plays: append(make([]Card, 0), state.Plays...),
+        Covers: append(make([]Card, 0), state.Covers...),
+        Hands: hands,
+		Known: known,
+        Dir: state.Dir,
+		Deck: state.Deck,
+		CardsInDeck: state.CardsInDeck,
+    }
+}
+
+func (state *GameState) Mask(me int) [][]Card {
+	sav := make([][]Card, len(state.Hands))
+	for i := 0; i < len(state.Hands); i++ {
+		sav[i] = state.Hands[i]
+		if i == me {
+			continue
+		}
+		n := len(state.Hands[i])
+		state.Hands[i] = append(make([]Card, 0), state.Known[i]...)
+		for j := len(state.Hands[i]); j < n; j++ {
+			state.Hands[i] = append(state.Hands[i], -1)
+		}
+	}
+	return sav
+}
+
+func (state *GameState) AllActions() []Action {
+	acts := make([]Action, 0)
+	for i := 0; i < len(state.Hands); i++ {
+		acts = append(acts, state.PlayerActions(i)...)
+	}
+	return acts
 }
