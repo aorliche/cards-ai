@@ -150,6 +150,7 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 				(*game.GetJoined())[0] = true
 				// Not protected by mutex because game only becomes visible here
 				games[*game.GetKey()] = game
+				Update(game)
 			}
 			case "Join": {
 				if player != -1 {
@@ -180,6 +181,7 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 				(*game.GetConns())[player] = conn
 				// Tell the client a player has joined, giving optional data
 				game.Join(req.Data)
+				Update(game)
 				game.GetMutex().Unlock()
 			}
 			case "Action": {
@@ -203,6 +205,7 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 				game.GetMutex().Lock()
 				// Let the game do what it wants with the action
 				game.Action(req.Data)
+				Update(game)
 				game.GetMutex().Unlock()
 			}
 			case "Chat:": {
