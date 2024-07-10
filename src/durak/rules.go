@@ -318,7 +318,7 @@ func (state *GameState) AllPassed() bool {
     return true
 }
 
-func (state *GameState) GameOver() bool {
+func (state *GameState) IsOver() bool {
     if state.CardsInDeck > 0 {
         return false
     }

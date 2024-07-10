@@ -45,11 +45,11 @@ type Game interface {
 	Join(string) error
 	Action(string) error
 	// Update info for player n
-	GetState(int) string
+	GetState(int) (string, error)
 }
 
 // Hack
-var InitGameFunc func(string) (Game, error)
+var CreateGameFunc func() Game
 
 var games = make(map[int]Game)
 var upgrader = websocket.Upgrader{} // Default options
@@ -72,7 +72,12 @@ func Update(game Game) {
 		if c == nil {
 			continue
 		}
-		reply := Reply{Type: "Update", Data: game.GetState(i)}
+		state, err := game.GetState(i)
+		if err != nil {
+			log.Println("Error in GetState")
+			continue
+		}
+		reply := Reply{Type: "Update", Data: state}
 		jsn, _ := json.Marshal(reply)
 		c.WriteMessage(websocket.TextMessage, jsn);
 	}
@@ -130,15 +135,11 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				player = 0
-				if InitGameFunc == nil {
-					log.Println("Attempted to create game without InitGameFunc being set")
+				if CreateGameFunc == nil {
+					log.Println("Attempted to create game without CreateGameFunc being set")
 					continue
 				}
-				game, err := InitGameFunc(req.Data)
-				if err != nil {
-					log.Println("Error in InitGameFunc")
-					continue
-				}
+				game := CreateGameFunc()
 				*game.GetKey() = NextGameIdx()
 				*game.GetNames() = make([]string, len(req.Types))
 				*game.GetTypes() = append(make([]string, 0), req.Types...)
@@ -148,6 +149,13 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 				(*game.GetNames())[0] = req.Name
 				(*game.GetConns())[0] = conn
 				(*game.GetJoined())[0] = true
+				// Check game state okay
+				err := game.Init(req.Data)
+				if err != nil {
+					log.Println("Error in game init")
+					log.Println(err)
+					continue
+				}
 				// Not protected by mutex because game only becomes visible here
 				games[*game.GetKey()] = game
 				Update(game)

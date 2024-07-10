@@ -3,9 +3,43 @@
 	<head>
 		<link href='/css/ui.css' rel='stylesheet'>
 		<script type='module' src='/js/durak.js'></script>
-		<title>Durak AI Training</title>
+		<title>Computer Durak</title>
 	</head>
 	<body>
-		<canvas id='board' width=900 height=600></canvas>
+		<h2>Computer Durak</h2>
+		<div id='container'>
+			<canvas id='board' width=900 height=600></canvas>
+			<div id='controls'>
+				<div>
+					<label for='name'>My Name:</label>
+					<input type='text' name='name' id='name'>
+				</div>
+				<div id='new-game'>
+					<h3>New Game</h3>
+					<button id='human'>Add Human</button>
+					<button id='easy'>Add Easy</button>
+					<button id='medium'>Add Medium</button>
+					<hr>
+					<div id='players'>
+						<div id='number'>1 Players</div>
+						<div class='player'><div class='type human'>Human</div></div>
+					</div>
+					<button id='start'>Start Game</button>
+				</div>
+				<div>
+					<h3>Open Games</h3>
+					<select name='durak-list-select' multiple></select><br>
+					<button id='join'>Join Game</button>
+				</div>
+				<div>
+					<h3>Chat</h3>
+					<div id='chat-div'>
+						<textarea readonly id='chat'></textarea><br>
+						<input type='text' id='message'>
+					</div>
+					<button id='send'>Send</button>
+				</div>
+			</div>
+		</div>
 	</body>
 </html>

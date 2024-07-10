@@ -45,7 +45,7 @@ func TestRandom3PlayerGame(t *testing.T) {
 	for i := 0; i<10; i++ {
 		state := InitGameState(3)
 		count := 0
-		for !state.GameOver() {
+		for !state.IsOver() {
 			acts := state.AllActions()
 			if len(acts) == 0 {
 				t.Errorf("No actions! attacker: %v, defender: %v, cards in deck: %v won: %v hands: %v", state.Attacker, state.Defender, state.CardsInDeck, state.Won, state.Hands)
@@ -64,7 +64,7 @@ func TestRandom6PlayerGame(t *testing.T) {
 	for i := 0; i<10; i++ {
 		state := InitGameState(6)
 		count := 0
-		for !state.GameOver() {
+		for !state.IsOver() {
 			acts := state.AllActions()
 			if len(acts) == 0 {
 				t.Errorf("No actions! attacker: %v, defender: %v, cards in deck: %v won: %v hands: %v", state.Attacker, state.Defender, state.CardsInDeck, state.Won, state.Hands)
