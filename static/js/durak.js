@@ -1,4 +1,4 @@
-import {loadCardImages, onLoaded, loadImage, Button, Card, Hand, Board, Stack} from './ui.js';
+import {loadCardImages, onLoaded, loadImage, Button, Card, Hand, Board, Stack, Deck} from './ui.js';
 import {$, $$} from './util.js';
 
 window.addEventListener('load', () => {
@@ -205,6 +205,32 @@ window.addEventListener('load', () => {
 				board.stacks.at(-1).cards.push(card);
 			}
 		}
+
+		board.message = "";
+
+		// Show win message
+		if (data.State.Won[data.Player]) {
+			board.message = "You won!";
+		} 
+
+		// Show loss message
+		let winners = 0;
+		for (let i=0; i<data.State.Won.length; i++) {
+			if (data.State.Won[i]) {
+				winners++;
+			}
+		}
+		if (winners == data.State.Won.length-1) {
+			board.message = "You lost...";
+		}
+
+		// Display deck and trump
+		const cardIdx = data.State.Trump;
+		const suit = suits[Math.floor(cardIdx/9)];
+		const rank = ranks[cardIdx % 9];
+		const trump = new Card(suit, rank);
+
+		board.deck = new Deck({trump, size: data.State.CardsInDeck});
 
 		board.draw();
 	}

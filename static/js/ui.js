@@ -1,4 +1,4 @@
-export {loadCardImages, onLoaded, loadImage, Button, Stack, Card, Hand, Board};
+export {loadCardImages, onLoaded, loadImage, Button, Stack, Card, Hand, Board, Deck};
 
 import {drawText} from './util.js';
 
@@ -215,6 +215,37 @@ class Stack {
 	}
 }
 
+class Deck {
+	constructor(params) {
+		this.over = new Card('hearts', '2');
+		this.over.visible = false;
+		this.trump = params.trump ?? null;
+		this.p = params.p ?? {x: 100, y: 60};
+		this.size = params.size ?? 100;
+	}
+
+	draw(ctx) {
+		if (this.size > 0) {
+			ctx.save();
+			ctx.translate(this.p.x, this.p.y+40);
+			ctx.translate(-this.over.width/2, -this.over.height/2);
+			this.trump.draw(ctx)
+			ctx.restore();
+		}
+		if (this.size > 1) {
+			ctx.save();
+			ctx.translate(this.p.x, this.p.y);
+			ctx.save();
+			ctx.translate(this.over.height/2, -this.over.width/2);
+			ctx.rotate(Math.PI/2);
+			this.over.draw(ctx)
+			ctx.restore();
+			drawText(ctx, this.size, {x: 0, y: 20}, 'red', 'bold 48px sans');
+			ctx.restore();
+		}
+	}
+}
+
 class Board {
 	constructor(params) {
 		this.canvas = params.canvas;
@@ -224,6 +255,8 @@ class Board {
 		this.ctx = this.canvas.getContext('2d');
 		this.hands = [];
 		this.stacks = [];
+		this.message_ = null;
+		this.deck = null;
 	}
 
 	getStackTransforms() {
@@ -255,8 +288,14 @@ class Board {
 
 	draw() {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		if (this.deck) {
+			this.deck.draw(this.ctx);
+		}
 		this.stacks.forEach(s => s.draw());
 		this.hands.forEach(h => h.draw());
+		if (this.message_) {
+			drawText(this.ctx, this.message_, {x: this.canvas.width/2, y: this.canvas.height/2+20}, 'red', 'bold 64px sans');
+		}
 	}
 
 	mousedown(e) {
@@ -288,6 +327,14 @@ class Board {
 			h.mouseup();
 		});
 		this.draw();
+	}
+
+	get message() {
+		return this.message_;
+	}
+
+	set message(msg) {
+		this.message_ = msg;
 	}
 }
 
