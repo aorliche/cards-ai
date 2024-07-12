@@ -1,6 +1,7 @@
 package main
 
 import(
+	"bytes"
 	"encoding/json"
 	"errors"
 	"log"
@@ -17,14 +18,15 @@ type GameState struct {
 	State *durak.GameState
 	Player int
 	Names []string
+	Actions []durak.Action
 }
 
 type Game struct {
+	sync.Mutex
 	Key int
 	Players []*server.Player
 	// The actual game state
 	State GameState
-	sync.Mutex
 }
 
 func CreateGame() server.Game {
@@ -74,8 +76,20 @@ func (game *Game) Join(string) error {
 	return nil
 }
 
-func (game *Game) Action(string) error {
-	return nil
+func (game *Game) Action(data string) error {
+	var act durak.Action
+	json.NewDecoder(bytes.NewBuffer([]byte(data))).Decode(&act)
+	actions := game.State.State.PlayerActions(act.Player)
+	log.Println(game.State.State)
+	log.Println(act.ToStr())
+	for _,a := range actions {
+		log.Println(a.ToStr())
+		if a == act {
+			game.State.State.TakeAction(act)
+			return nil
+		}
+	}
+	return errors.New("Invalid action")
 }
 
 func (game *Game) GetState(player int) (string, error) {
@@ -91,6 +105,8 @@ func (game *Game) GetState(player int) (string, error) {
 			game.State.Names[i] = p.Type
 		}
 	}
+	// Get player actions
+	game.State.Actions = game.State.State.PlayerActions(player)
 	data, err := json.Marshal(game.State)
 	game.State.State.Hands = hands
 	if err != nil {

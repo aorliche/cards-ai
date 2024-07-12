@@ -111,7 +111,7 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 		}
 		var req Request
 		json.NewDecoder(bytes.NewBuffer(msg)).Decode(&req)
-		//log.Println(string(msg))
+		log.Println(string(msg))
 		switch req.Type {
 			case "List" : {
 				keys := make([]int, 0)
@@ -217,6 +217,7 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 			}
 			case "Action": {
 				game := games[req.Game]
+				log.Println(game.GetKey())
 				if game == nil { 
 					log.Println("No such game", req.Game)
 					continue
@@ -236,8 +237,12 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 				}
 				game.Lock()
 				// Let the game do what it wants with the action
-				game.Action(req.Data)
-				UpdatePlayers(game)
+				err := game.Action(req.Data)
+				if err != nil {
+					log.Println(err)
+				} else {
+					UpdatePlayers(game)
+				}
 				game.Unlock()
 			}
 			case "Chat": {

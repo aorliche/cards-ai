@@ -7,12 +7,23 @@ window.addEventListener('load', () => {
 	const suits = ["clubs", "spades", "hearts", "diamonds"];
 	const ranks = ["6", "7", "8", "9", "10", "jack", "queen", "king", "ace"];
 
+	function cardToIndex(card) {
+		let i = suits.indexOf(card.suit);
+		let j = ranks.indexOf(card.rank);
+		if (i != -1 && j != -1) {
+			return i*9+j;
+		}
+		return null;
+	}
+
 	const names = ['Emote', 'Artichoke', 'Json', 'Wrench', 'Ziggler', 'Fanny'];
 	let name = names[Math.floor(names.length*Math.random())];
 	$('#name').value = name;
 
 	let players = ['Human'];
 	let gameId = -1;
+	let playerId = -1;
+	let myActions = [];
 	let conn = null;
 
 	// Update the list of games
@@ -75,7 +86,9 @@ window.addEventListener('load', () => {
 	// Update board
 	// Go clockwise from bottom
 	function updateBoard(data) {
-		const p = data.Player;
+		playerId = data.Player;
+		myActions = data.Actions;
+		console.log(myActions);
 		const nh = data.State.Hands.length;
 		let lrtbs = ['bottom', 'top'];
 		let offsets = [0, 0];
@@ -91,12 +104,12 @@ window.addEventListener('load', () => {
 			board.hands = [];
 
 			for (let i=0; i<nh; i++) {
-				const j = (p+i)%nh;
+				const j = (playerId+i)%nh;
 				const hand = new Hand({board, lrtb: lrtbs[i], name: data.Names[j], offset: offsets[i]});
 			}
 		}
 		for (let i=0; i<nh; i++) {
-			const j = (p+i)%nh;
+			const j = (playerId+i)%nh;
 			const hand = board.hands[i];
 
 			// Update names as players join
@@ -120,7 +133,6 @@ window.addEventListener('load', () => {
 				} else {
 					suit = suits[Math.floor(cardIdx/9)];
 					rank = ranks[cardIdx % 9];
-					console.log(suit, rank);
 					card = new Card(suit, rank);
 					card.visible = true;
 				}
@@ -131,6 +143,26 @@ window.addEventListener('load', () => {
 				hand.cards.push(card);
 			}
 		}
+
+		// Update stacks
+		board.stacks = [];
+
+		for (let i=0; i<data.State.Plays.length; i++) {
+			const cardIdx = data.State.Plays[i];
+			const suit = suits[Math.floor(cardIdx/9)];
+			const rank = ranks[cardIdx % 9];
+			const card = new Card(suit, rank);
+			new Stack({board, cards: [card]});
+
+			if (data.State.Covers[i] != -1) {
+				const cardIdx = data.State.Covers[i];
+				const suit = suits[Math.floor(cardIdx/9)];
+				const rank = ranks[cardIdx % 9];
+				const card = new Card(suit, rank);
+				board.stacks.at(-1).cards.push(card);
+			}
+		}
+
 		board.draw();
 	}
 
@@ -200,7 +232,8 @@ window.addEventListener('load', () => {
 		}
 	});
 
-	/*new Stack({board, cards: [new Card('hearts', '2')]});
+	/*
+	 new Stack({board, cards: [new Card('hearts', '2')]});
 	new Stack({board, cards: [new Card('hearts', '2'), new Card('hearts', '9')]});
 	new Stack({board, cards: [new Card('diamonds', 'jack'), new Card('hearts', '9'), new Card('spades', 'ace')]});*/
 
@@ -245,6 +278,43 @@ window.addEventListener('load', () => {
 	});
 
 	canvas.addEventListener('mouseup', e => {
+		const hand = board.hands[0];
+		const point = new DOMPoint(e.offsetX, e.offsetY);
+		console.log(playerId, myActions);
+		if (hand && hand.holding) {
+			console.log(hand.holding);
+			// Check stacks
+			let underCard = null;
+			board.stacks.forEach(s => {
+				const xfms = s.getCardTransforms();
+				for (let i=0; i<s.cards.length; i++) {
+					const p = point.matrixTransform(xfms[i].inverse());
+					if (p.x > 0 && p.x < s.cards[i].width && p.y > 0 && p.y < s.cards[i].height) {
+						underCard = s.cards[i];
+					}
+				}
+			});
+			if (underCard) {
+				for (let i=0; i<myActions.length; i++) {
+					const action = myActions[i];
+					const underIdx = cardToIndex(underCard);
+					const overIdx = cardToIndex(hand.holding);
+					if (action.Card == overIdx && action.Covering == underIdx) {
+						conn.send(JSON.stringify({'Type': 'Action', 'Game': gameId, 'Data': JSON.stringify(action)}));
+					}
+				}
+			// Try to play or reverse
+			} else {
+				for (let i=0; i<myActions.length; i++) {
+					const action = myActions[i];
+					const card = cardToIndex(hand.holding);
+					console.log(action.Card, card);
+					if (action.Card == card) {
+						conn.send(JSON.stringify({'Type': 'Action', 'Game': gameId, 'Data': JSON.stringify(action)}));
+					}
+				}
+			}
+		}
 		board.mouseup();
 	});
 
