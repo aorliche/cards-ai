@@ -229,8 +229,11 @@ window.addEventListener('load', () => {
 		const suit = suits[Math.floor(cardIdx/9)];
 		const rank = ranks[cardIdx % 9];
 		const trump = new Card(suit, rank);
-
-		board.deck = new Deck({trump, size: data.State.CardsInDeck});
+		let p = {x: 100, y: 60};
+		if (nh == 3) {
+			p = {x: 100, y: 300};
+		} 
+		board.deck = new Deck({trump, p, size: data.State.CardsInDeck});
 
 		board.draw();
 	}

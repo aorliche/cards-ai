@@ -220,7 +220,7 @@ class Deck {
 		this.over = new Card('hearts', '2');
 		this.over.visible = false;
 		this.trump = params.trump ?? null;
-		this.p = params.p ?? {x: 100, y: 60};
+		this.p = params.p ?? {x: 120, y: 60};
 		this.size = params.size ?? 100;
 	}
 
