@@ -4,8 +4,12 @@ import {$, $$} from './util.js';
 window.addEventListener('load', () => {
 	loadCardImages();
 
+	const suits = ["clubs", "spades", "hearts", "diamonds"];
+	const ranks = ["6", "7", "8", "9", "10", "jack", "queen", "king", "ace"];
+
 	const names = ['Emote', 'Artichoke', 'Json', 'Wrench', 'Ziggler', 'Fanny'];
-	$('#name').value = names[Math.floor(names.length*Math.random())];
+	let name = names[Math.floor(names.length*Math.random())];
+	$('#name').value = name;
 
 	let players = ['Human'];
 	let gameId = -1;
@@ -45,10 +49,89 @@ window.addEventListener('load', () => {
 			if (!found) {
 				const opt = document.createElement('option');
 				opt.innerText = name;
-				console.log($('#games-select'));
 				$('#games-select').appendChild(opt);
 			}
 		}
+	}
+
+	const canvas = $('#board');
+	const board = new Board({canvas});
+	const swordImg = loadImage('/images/sword.png');
+	const shieldImg = loadImage('/images/shield.png');
+
+	// Dummy hand
+	function makeDummyHand() {
+		board.hands = [];
+		const hand = new Hand({board, lrtb: 'bottom', name, offset: 0});
+
+		for (let i=0; i<6; i++) {
+			hand.cards.push(new Card('hearts', '2'));
+			hand.cards.at(-1).visible = false;
+		}
+	}
+
+	makeDummyHand();
+
+	// Update board
+	// Go clockwise from bottom
+	function updateBoard(data) {
+		const p = data.Player;
+		const nh = data.State.Hands.length;
+		let lrtbs = ['bottom', 'top'];
+		let offsets = [0, 0];
+		if (nh == 3) {
+			lrtbs = ['bottom', 'top', 'top'];
+			offsets = [0, -200, 200];
+		} else if (nh == 4) {
+			lrtbs = ['bottom', 'left', 'top', 'right'];
+			offsets = [0, 0, 0, 0];
+		}
+		// Rebuild hands if necessary
+		if (board.hands.length != nh) {
+			board.hands = [];
+
+			for (let i=0; i<nh; i++) {
+				const j = (p+i)%nh;
+				const hand = new Hand({board, lrtb: lrtbs[i], name: data.Names[j], offset: offsets[i]});
+			}
+		}
+		for (let i=0; i<nh; i++) {
+			const j = (p+i)%nh;
+			const hand = board.hands[i];
+
+			// Update names as players join
+			hand.name = data.Names[j];
+			
+			// Ditch holding
+			if (hand.holding) {
+				hand.holding = null;
+			}
+			
+			// Update cards
+			hand.cards = [];
+			for (let k=0; k<data.State.Hands[j].length; k++) {
+				const cardIdx = data.State.Hands[j][k];
+				let suit, rank, card;
+				if (cardIdx == -1) {
+					suit = suits[0];
+					rank = ranks[0];
+					card = new Card(suit, rank);
+					card.visible = false;
+				} else {
+					suit = suits[Math.floor(cardIdx/9)];
+					rank = ranks[cardIdx % 9];
+					console.log(suit, rank);
+					card = new Card(suit, rank);
+					card.visible = true;
+				}
+				// Don't show even known enemy cards
+				if (i != 0) {
+					card.visible = false;
+				}
+				hand.cards.push(card);
+			}
+		}
+		board.draw();
 	}
 
 	conn = new WebSocket(`ws://${location.host}/ws`);
@@ -74,6 +157,7 @@ window.addEventListener('load', () => {
 				gameId = data;
 				break;
 			case 'Update':
+				updateBoard(data);
 				break;
 			case 'Chat':
 				$('#chat').value += `${data.Name}: ${data.Message}\n`;
@@ -89,10 +173,12 @@ window.addEventListener('load', () => {
 	}, 1000);
 
 	$('#start').addEventListener('click', () => {
+		makeDummyHand();
 		conn.send(JSON.stringify({'Type': 'New', 'Types': players, 'Name': $('#name').value}));
 	});
 
 	$('#join').addEventListener('click', () => {
+		makeDummyHand();
 		const select = $('#games-select');
 		const opt = select.options[select.selectedIndex];
 		if (!opt) {
@@ -102,21 +188,23 @@ window.addEventListener('load', () => {
 		conn.send(JSON.stringify({'Type': 'Join', 'Game': key, 'Name': $('#name').value}));
 	});
 
-	$('#send').addEventListener('click', () => {
+	function sendChat() {
 		conn.send(JSON.stringify({'Type': 'Chat', 'Game': gameId, 'Data': $('#message').value}));
+		$('#message').value = "";
+	}
+
+	$('#send').addEventListener('click', sendChat);
+	$('#message').addEventListener('keyup', e => {
+		if (e.code == 'Enter') {
+			sendChat();
+		}
 	});
 
-	const canvas = $('#board');
-	const board = new Board({canvas});
-	const swordImg = loadImage('/images/sword.png');
-	const shieldImg = loadImage('/images/shield.png');
-	const offsets = [-200, 200, -200, 200, 0, 0];
-
-	new Stack({board, cards: [new Card('hearts', '2')]});
+	/*new Stack({board, cards: [new Card('hearts', '2')]});
 	new Stack({board, cards: [new Card('hearts', '2'), new Card('hearts', '9')]});
-	new Stack({board, cards: [new Card('diamonds', 'jack'), new Card('hearts', '9'), new Card('spades', 'ace')]});
+	new Stack({board, cards: [new Card('diamonds', 'jack'), new Card('hearts', '9'), new Card('spades', 'ace')]});*/
 
-	['top', 'top', 'bottom', 'bottom', 'left', 'right'].forEach((lrtb, i) => {
+	/*['top', 'top', 'bottom', 'bottom', 'left', 'right'].forEach((lrtb, i) => {
 		const hand = new Hand({board, lrtb, name: names[i], offset: offsets[i]});
 
 		hand.cards.push(new Card('hearts', '3'));
@@ -142,7 +230,7 @@ window.addEventListener('load', () => {
 		hand.buttons.push(new Button({text: 'Picking Up'}));
 		hand.buttons.push(new Button({text: 'Okay', cb: true}));
 		hand.buttons.push(new Button({text: 'Pass', cb: true}));
-	});
+	});*/
 
 	canvas.addEventListener('mousemove', e => {
 		board.mousemove(e);

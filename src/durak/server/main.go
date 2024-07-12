@@ -1,6 +1,7 @@
 package main
 
 import(
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -10,11 +11,19 @@ import(
 	"github.com/aorliche/cards-ai/server"
 )
 
+// To give player index during update
+// As well as player names
+type GameState struct {
+	State *durak.GameState
+	Player int
+	Names []string
+}
+
 type Game struct {
 	Key int
 	Players []*server.Player
 	// The actual game state
-	State *durak.GameState
+	State GameState
 	sync.Mutex
 }
 
@@ -40,7 +49,7 @@ func (game *Game) HasOpenSlots() bool {
 }
 
 func (game *Game) IsOver() bool {
-	return game.State.IsOver()
+	return game.State.State.IsOver()
 }
 	
 func (game *Game) AddPlayer(player server.Player) {
@@ -56,7 +65,7 @@ func (game *Game) Init(string) error {
 	if n < 2 || n > 6 {
 		return errors.New("Bad number of players for Durak")
 	}
-	game.State = durak.InitGameState(n)
+	game.State.State = durak.InitGameState(n)
 	// TODO start AI players
 	return nil
 }
@@ -70,7 +79,24 @@ func (game *Game) Action(string) error {
 }
 
 func (game *Game) GetState(player int) (string, error) {
-	return "", nil
+	hands := game.State.State.Mask(player)
+	// Set player
+	game.State.Player = player
+	// Add player names
+	game.State.Names = make([]string, len(game.Players))
+	for i,p := range game.Players {
+		if p.Type == "Human" {
+			game.State.Names[i] = p.Name
+		} else {
+			game.State.Names[i] = p.Type
+		}
+	}
+	data, err := json.Marshal(game.State)
+	game.State.State.Hands = hands
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func main() {

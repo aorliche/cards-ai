@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 
     "github.com/gorilla/websocket"
 )
@@ -121,6 +122,7 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 					}
 					keys = append(keys, key) 
 				}
+				sort.Ints(keys)
 				jsn, _ := json.Marshal(keys)
 				reply := Reply{Type: "List", Data: string(jsn)}
 				repJsn, _ := json.Marshal(reply)
