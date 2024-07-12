@@ -3,12 +3,13 @@
 }
 #container {
 	display: flex;
+	align-items: flex-start;
 }
 #controls {
     margin-left: 20px;
     width: 280px;
 }
-select[name='durak-list-select'] {
+#games-select {
     margin-top: 10px;
     margin-bottom: 10px;
     width: 280px;
@@ -23,4 +24,11 @@ select[name='durak-list-select'] {
 }
 #chat-div {
     margin-bottom: 10px;
+}
+#players{
+	height: 80px;
+	overflow-y: scroll;
+}
+.type {
+	display: inline-block;
 }

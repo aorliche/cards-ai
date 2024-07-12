@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sync"
 
     "github.com/gorilla/websocket"
 )
@@ -31,16 +30,23 @@ type Chat struct {
 	Message string
 }
 
+type Player struct {
+	Name string
+	Type string
+	Joined bool
+	Conn *websocket.Conn
+}
+
 type Game interface {
-	// No data fields in golang interfaces
-	GetKey() *int
-	GetNames() *[]string
-	GetTypes() *[]string
-	GetJoined() *[]bool
-	GetMutex() *sync.Mutex
-	GetConns() *[]*websocket.Conn
 	// Callbacks
+	GetKey() int
+	SetKey(int)
+	HasOpenSlots() bool
 	IsOver() bool
+	Lock()
+	Unlock()
+	AddPlayer(Player)
+	GetPlayers() []*Player
 	Init(string) error
 	Join(string) error
 	Action(string) error
@@ -67,9 +73,9 @@ func NextGameIdx() int {
 // Update all human clients
 // e.g., in response to an AI move
 // Don't lock in update
-func Update(game Game) {
-	for i,c := range *game.GetConns() {
-		if c == nil {
+func UpdatePlayers(game Game) {
+	for i,p := range game.GetPlayers() {
+		if p.Conn == nil {
 			continue
 		}
 		state, err := game.GetState(i)
@@ -79,7 +85,7 @@ func Update(game Game) {
 		}
 		reply := Reply{Type: "Update", Data: state}
 		jsn, _ := json.Marshal(reply)
-		c.WriteMessage(websocket.TextMessage, jsn);
+		p.Conn.WriteMessage(websocket.TextMessage, jsn);
 	}
 }
 
@@ -110,45 +116,51 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 				keys := make([]int, 0)
 				for key,game := range games {
 					// Check if has not been won and has open slots
-					if game.IsOver() {
+					if game.IsOver() || !game.HasOpenSlots() {
 						continue
 					}
-					joined := *game.GetJoined()
-					for i := 0; i < len(joined); i++ {
-						if !joined[i] {
-							keys = append(keys, key) 
-							break
-						}
-					}
+					keys = append(keys, key) 
 				}
-				// Here we write a raw array of ints
 				jsn, _ := json.Marshal(keys)
-				err = conn.WriteMessage(websocket.TextMessage, jsn)
+				reply := Reply{Type: "List", Data: string(jsn)}
+				repJsn, _ := json.Marshal(reply)
+				err = conn.WriteMessage(websocket.TextMessage, repJsn)
 				if err != nil {
 					log.Println(err)
 					continue
 				}
 			}
 			case "New": {
-				if player != -1 {
-					log.Println("Player already joined")
-					continue
-				}
-				player = 0
 				if CreateGameFunc == nil {
 					log.Println("Attempted to create game without CreateGameFunc being set")
 					continue
 				}
 				game := CreateGameFunc()
-				*game.GetKey() = NextGameIdx()
-				*game.GetNames() = make([]string, len(req.Types))
-				*game.GetTypes() = append(make([]string, 0), req.Types...)
-				*game.GetJoined() = make([]bool, len(req.Types))
-				*game.GetConns() = make([]*websocket.Conn, len(req.Types))
-				*game.GetMutex() = sync.Mutex{}
-				(*game.GetNames())[0] = req.Name
-				(*game.GetConns())[0] = conn
-				(*game.GetJoined())[0] = true
+				game.SetKey(NextGameIdx())
+				// Add players, and also
+				// Check if we have a human player or send everything to conn 0
+				player = -1
+				for i,typ := range req.Types {
+					game.AddPlayer(Player{
+						Name: "",
+						Type: typ,
+						Joined: false,
+						Conn: nil,
+					})
+					// Computer players are joined
+					if typ != "Human" {
+						game.GetPlayers()[i].Joined = true
+					}
+					if player == -1 && typ == "Human" {
+						player = i
+						game.GetPlayers()[i].Name = req.Name
+						game.GetPlayers()[i].Conn = conn
+						game.GetPlayers()[i].Joined = true
+					}
+				}
+				if player == -1 {
+					game.GetPlayers()[0].Conn = conn
+				}
 				// Check game state okay
 				err := game.Init(req.Data)
 				if err != nil {
@@ -157,40 +169,49 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				// Not protected by mutex because game only becomes visible here
-				games[*game.GetKey()] = game
-				Update(game)
+				games[game.GetKey()] = game
+				// Send the game ID to the player
+				jsn, _ := json.Marshal(game.GetKey())
+				reply := Reply{Type: "New", Data: string(jsn)}
+				repJsn, _ := json.Marshal(reply)
+				conn.WriteMessage(websocket.TextMessage, repJsn);
+				// Update single player
+				UpdatePlayers(game)
 			}
 			case "Join": {
-				if player != -1 {
-					log.Println("Player already joined")
-					continue
-				}
 				game := games[req.Game]
 				if game == nil { 
-					log.Println("No such game", req.Game)
+					log.Println("No such game ", req.Game)
 					continue
 				}
-				game.GetMutex().Lock()
-				joined := *game.GetJoined()
-				for i := 1; i < len(joined); i++ {
-					if !joined[i] {
+				game.Lock()
+				player = -1
+				for i,p := range game.GetPlayers() {
+					if !p.Joined {
 						player = i
-						(*game.GetNames())[i] = req.Name
+						p.Name = req.Name
+						p.Joined = true
+						p.Conn = conn
 						break
 					}
 				}
-				game.GetMutex().Unlock()
+				game.Unlock()
 				if player == -1 {
 					log.Println("No open slots")
 					continue
 				}
-				game.GetMutex().Lock()
-				(*game.GetJoined())[player] = true
-				(*game.GetConns())[player] = conn
-				// Tell the client a player has joined, giving optional data
-				game.Join(req.Data)
-				Update(game)
-				game.GetMutex().Unlock()
+				game.Lock()
+				// Confirm join action by giving player a new gameId
+				// (although he should already know)
+				err := game.Join(req.Data)
+				if err == nil {
+					jsn, _ := json.Marshal(game.GetKey())
+					reply := Reply{Type: "Join", Data: string(jsn)}
+					repJsn, _ := json.Marshal(reply)
+					conn.WriteMessage(websocket.TextMessage, repJsn);
+					UpdatePlayers(game)
+				}
+				game.Unlock()
 			}
 			case "Action": {
 				game := games[req.Game]
@@ -198,53 +219,48 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 					log.Println("No such game", req.Game)
 					continue
 				}
-				if player == -1 || player > len(*game.GetJoined()) {
+				if player == -1 || player >= len(game.GetPlayers()) {
 					log.Println("Invalid player")
 					continue
 				}
-				if (*game.GetTypes())[player] == "Human" && !(*game.GetJoined())[player] {
-					log.Println("Player not joined")
+				p := game.GetPlayers()[player]  
+				if !p.Joined || p.Type != "Human" {
+					log.Println("Player not joined or not human")
 					continue
 				}
 				if game.IsOver() {
 					log.Println("Game already over")
 					continue
 				}
-				game.GetMutex().Lock()
+				game.Lock()
 				// Let the game do what it wants with the action
 				game.Action(req.Data)
-				Update(game)
-				game.GetMutex().Unlock()
+				UpdatePlayers(game)
+				game.Unlock()
 			}
-			case "Chat:": {
+			case "Chat": {
 				game := games[req.Game]
 				if game == nil { 
 					log.Println("No such game", req.Game)
 					continue
 				}
-				myName := ""
-				for i,c := range *game.GetConns() {
-					if c == conn {
-						myName = (*game.GetNames())[i]
-						break
-					}
-				}
-				if myName == "" {
-					log.Println("Unknown connection")
+				if player <= -1 || player >= len(game.GetPlayers()) {
+					log.Println("Chat from bad player")
 					continue
 				}
+				myName := game.GetPlayers()[player].Name
 				chat := Chat{Name: myName, Message: req.Data}
 				jsnChat, _ := json.Marshal(chat)
 				reply := Reply{Type: "Chat", Data: string(jsnChat)}
 				jsnReply, _ := json.Marshal(reply)
 				// Write message to all connected players
-				game.GetMutex().Lock()
-				for _,c := range *game.GetConns() {
-					if c != nil {
-						c.WriteMessage(websocket.TextMessage, jsnReply);
+				game.Lock()
+				for _,p := range game.GetPlayers() {
+					if p.Conn != nil {
+						p.Conn.WriteMessage(websocket.TextMessage, jsnReply);
 					}
 				}
-				game.GetMutex().Unlock()
+				game.Unlock()
 			}
 		}
 	}
@@ -283,7 +299,7 @@ func ServeLocalFiles(fsDirs []string, webDirs []string) {
             log.Fatal(err)
         }
         for _,f := range files {
-            //fmt.Println(f.Name(), f.IsDir())
+            log.Println(f.Name(), f.IsDir())
             if f.IsDir() {
                 continue
             }
