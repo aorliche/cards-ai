@@ -366,8 +366,9 @@ func (state *GameState) TakeAction(action Action) {
 			RemoveCard(&state.Known[action.Player], action.Card)
 			// Reset deferring
             state.Deferring = make([]bool, len(state.Hands))
-			// Check win
+			// Check win passed is important for not hanging game with no actions
 			if state.CardsInDeck == 0 && len(state.Hands[action.Player]) == 0 {
+				state.Passed = make([]bool, len(state.Hands))
 				state.Won[action.Player] = true
 			}
         }
@@ -381,8 +382,9 @@ func (state *GameState) TakeAction(action Action) {
 			RemoveCard(&state.Known[action.Player], action.Card)
 			// Reset deferring
             state.Deferring = make([]bool, len(state.Hands))
-			// Check win
+			// Check win passed is important for not hanging game with no actions
 			if state.CardsInDeck == 0 && len(state.Hands[action.Player]) == 0 {
+				state.Passed = make([]bool, len(state.Hands))
 				state.Won[action.Player] = true
 			}
         }
@@ -396,8 +398,9 @@ func (state *GameState) TakeAction(action Action) {
             state.Deferring = make([]bool, len(state.Hands))
 			// Change direction
             state.Dir *= -1
-			// Check win
+			// Check win passed is important for not hanging game with no actions
 			if state.CardsInDeck == 0 && len(state.Hands[action.Player]) == 0 {
+				state.Passed = make([]bool, len(state.Hands))
 				state.Won[action.Player] = true
 			}
         }
@@ -440,15 +443,15 @@ func (state *GameState) TakeAction(action Action) {
         }
     }
 	// Check for a winner being marked as attacker or defender
-	if state.Won[state.Attacker] {
-		state.Attacker = state.NextRole(state.Attacker)
-		state.Defender = state.NextRole(state.Attacker)
-		state.Passed[state.Attacker] = false
-		state.Passed[state.Defender] = false
-	} else if state.Won[state.Defender] {
-		state.Defender = state.NextRole(state.Defender)
-		state.Passed[state.Attacker] = false
-		state.Passed[state.Defender] = false
+	// This isn't necessary?
+	if !state.IsOver() {
+		for state.Won[state.Attacker] || state.Attacker == state.Defender {
+			state.Attacker = state.NextRole(state.Attacker)
+			state.Defender = state.NextRole(state.Attacker)
+		}
+		for state.Won[state.Defender] {
+			state.Defender = state.NextRole(state.Defender)
+		}
 	}
 }
 
