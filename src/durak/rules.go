@@ -443,11 +443,13 @@ func (state *GameState) TakeAction(action Action) {
 	if state.Won[state.Attacker] {
 		state.Attacker = state.NextRole(state.Attacker)
 		state.Defender = state.NextRole(state.Attacker)
+		state.Passed[state.Attacker] = false
+		state.Passed[state.Defender] = false
 	} else if state.Won[state.Defender] {
 		state.Defender = state.NextRole(state.Defender)
+		state.Passed[state.Attacker] = false
+		state.Passed[state.Defender] = false
 	}
-	state.Passed[state.Attacker] = false
-	state.Passed[state.Defender] = false
 }
 
 func (state *GameState) Clone() *GameState {

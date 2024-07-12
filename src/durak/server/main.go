@@ -80,10 +80,7 @@ func (game *Game) Action(data string) error {
 	var act durak.Action
 	json.NewDecoder(bytes.NewBuffer([]byte(data))).Decode(&act)
 	actions := game.State.State.PlayerActions(act.Player)
-	log.Println(game.State.State)
-	log.Println(act.ToStr())
 	for _,a := range actions {
-		log.Println(a.ToStr())
 		if a == act {
 			game.State.State.TakeAction(act)
 			return nil

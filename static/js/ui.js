@@ -551,5 +551,10 @@ class Hand {
 			this.cards.push(this.holding);
 			this.holding = null;
 		}
+		for (let i=0; i<this.buttons.length; i++) {
+			if (this.buttons[i].hovering && this.buttons[i].cb) {
+				this.buttons[i].cb();
+			}
+		}
 	}
 }

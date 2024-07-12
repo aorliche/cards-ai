@@ -217,7 +217,6 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 			}
 			case "Action": {
 				game := games[req.Game]
-				log.Println(game.GetKey())
 				if game == nil { 
 					log.Println("No such game", req.Game)
 					continue

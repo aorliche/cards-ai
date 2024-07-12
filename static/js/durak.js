@@ -6,6 +6,7 @@ window.addEventListener('load', () => {
 
 	const suits = ["clubs", "spades", "hearts", "diamonds"];
 	const ranks = ["6", "7", "8", "9", "10", "jack", "queen", "king", "ace"];
+	const verbs = ["Play", "Cover", "Reverse", "Pass", "PickUp", "Defer"];
 
 	function cardToIndex(card) {
 		let i = suits.indexOf(card.suit);
@@ -144,6 +145,48 @@ window.addEventListener('load', () => {
 			}
 		}
 
+		// Update per-player icons and messages
+		for (let i=0; i<nh; i++) {
+			const j = (playerId+i)%nh;
+			const hand = board.hands[i];
+
+			hand.buttons = [];
+
+			if (data.State.Attacker == j) {
+				hand.buttons.push(new Button({img: swordImg}));
+			} else if (data.State.Defender == j) {
+				hand.buttons.push(new Button({img: shieldImg}));
+			}
+
+			if (data.State.PickingUp && data.State.Defender == j) {
+				hand.buttons.push(new Button({text: 'Picking Up'}));
+			} else if (data.State.Passed[j]) {
+				hand.buttons.push(new Button({text: 'Passed'}));
+			}
+		}
+		
+		// Update buttons
+		const hand = board.hands[0];
+		for (let i=0; i<myActions.length; i++) {
+			const act = myActions[i];
+			if (act.Verb == verbs.indexOf("Pass")) {
+				hand.buttons.push(new Button({
+					text: 'Pass',
+					cb: () => {
+						conn.send(JSON.stringify({'Type': 'Action', 'Game': gameId, 'Data': JSON.stringify(act)}));
+					},
+				}));
+			}
+			if (myActions[i].Verb == verbs.indexOf("PickUp")) {
+				hand.buttons.push(new Button({
+					text: 'Pick Up',
+					cb: () => {
+						conn.send(JSON.stringify({'Type': 'Action', 'Game': gameId, 'Data': JSON.stringify(act)}));
+					},
+				}));
+			} 
+		}
+
 		// Update stacks
 		board.stacks = [];
 
@@ -232,39 +275,6 @@ window.addEventListener('load', () => {
 		}
 	});
 
-	/*
-	 new Stack({board, cards: [new Card('hearts', '2')]});
-	new Stack({board, cards: [new Card('hearts', '2'), new Card('hearts', '9')]});
-	new Stack({board, cards: [new Card('diamonds', 'jack'), new Card('hearts', '9'), new Card('spades', 'ace')]});*/
-
-	/*['top', 'top', 'bottom', 'bottom', 'left', 'right'].forEach((lrtb, i) => {
-		const hand = new Hand({board, lrtb, name: names[i], offset: offsets[i]});
-
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.push(new Card('hearts', '3'));
-		hand.cards.at(-2).selected = true;
-
-		if (i == 1) {
-			hand.buttons.push(new Button({img: swordImg}));
-		} else if (i == 2) {
-			hand.buttons.push(new Button({img: shieldImg}));
-		}
-		hand.buttons.push(new Button({text: 'Picking Up'}));
-		hand.buttons.push(new Button({text: 'Okay', cb: true}));
-		hand.buttons.push(new Button({text: 'Pass', cb: true}));
-	});*/
-
 	canvas.addEventListener('mousemove', e => {
 		board.mousemove(e);
 	});
@@ -280,9 +290,7 @@ window.addEventListener('load', () => {
 	canvas.addEventListener('mouseup', e => {
 		const hand = board.hands[0];
 		const point = new DOMPoint(e.offsetX, e.offsetY);
-		console.log(playerId, myActions);
 		if (hand && hand.holding) {
-			console.log(hand.holding);
 			// Check stacks
 			let underCard = null;
 			board.stacks.forEach(s => {
@@ -304,12 +312,12 @@ window.addEventListener('load', () => {
 					}
 				}
 			// Try to play or reverse
-			} else {
+			// Note that only bottom player will have option of playing a card so we don't need to theck x for left and right lrtb
+			} else if (point.y > 100 && point.y <= canvas.height-100) {
 				for (let i=0; i<myActions.length; i++) {
 					const action = myActions[i];
 					const card = cardToIndex(hand.holding);
-					console.log(action.Card, card);
-					if (action.Card == card) {
+					if (action.Card == card && action.Covering == -1) {
 						conn.send(JSON.stringify({'Type': 'Action', 'Game': gameId, 'Data': JSON.stringify(action)}));
 					}
 				}
