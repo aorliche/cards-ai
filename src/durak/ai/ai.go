@@ -1,6 +1,8 @@
 package ai
 
 import (
+	//"log"
+
 	"github.com/aorliche/cards-ai/search"
 	"github.com/aorliche/cards-ai/durak"
 )
@@ -13,15 +15,13 @@ func (state *GameState) NumPlayers() int {
 	return len(state.Hands)
 }
 
-func (state *GameState) Eval(me int, player int) float64 {
+func (state *GameState) Eval(player int) float64 {
 	// Check my win
 	if state.CardsInDeck == 0 && len(state.Hands[player]) == 0 {
-		return float64(100)
+		return 100.0
 	}
-	// Mask (remember to restore)
-	hands := state.Mask(me)
 	// My hand
-	hval := float64(0)
+	hval := 0.0
 	for _,c := range state.Hands[player] {
 		if c == durak.UNK_CARD {
 			continue
@@ -32,7 +32,7 @@ func (state *GameState) Eval(me int, player int) float64 {
 		}
 	}
 	if state.CardsInDeck <= 3 {
-		hval -= 4*len(state.Hands[player])
+		hval -= 4.0*float64(len(state.Hands[player]))
 	}
 	// Other player's hands
 	ovals := make([]float64, 0)
@@ -40,15 +40,15 @@ func (state *GameState) Eval(me int, player int) float64 {
 		if i == player {
 			continue
 		}
-		v := float64(0)
+		v := 0.0
 		// Check other player's win
 		if state.CardsInDeck == 0 && len(h) == 0 {
-			ovals = append(ovals, float64(100))
+			ovals = append(ovals, 100.0)
 			continue
 		}
 		for _,c := range h {
 			if c == durak.UNK_CARD {
-				v += float64(-4)
+				v += -4.0
 			} else if c.Suit() == state.Trump.Suit() {
 				v += float64(c.Rank())
 			} else {
@@ -56,7 +56,7 @@ func (state *GameState) Eval(me int, player int) float64 {
 			}
 		}
 		if state.CardsInDeck <= 3 {
-			v -= 4*len(h)
+			v -= 4.0*float64(len(h))
 		}
 		ovals = append(ovals, v)
 	}
@@ -67,30 +67,40 @@ func (state *GameState) Eval(me int, player int) float64 {
 			worst = v
 		}
 	}
-	// Unmask
-	state.Hands = sav
 	return hval - worst
 }
 
-func (state *GameState) Children(me int, player int) []durak.Action, []*search.GameState {
+func (state *GameState) Children(player int) ([]search.Action, []search.GameState) {
 	// Check that we don't have unknown cards on the board
 	// If we do, we can't search further
-	unk := false
 	for i,c := range state.Plays {
 		if c == durak.UNK_CARD || state.Covers[i] == durak.UNK_CARD {
-			unk = true
-			break
+			return make([]search.Action, 0), make([]search.GameState, 0)
 		}
 	}
-	if unk {
-		return make([]durak.Action, 0), make([]*GameState, 0)
+	// Check that the game isn't over
+	// If it is, we can't search further
+	if state.IsOver() {
+		return make([]search.Action, 0), make([]search.GameState, 0)
 	}
-	acts := state.PlayerActions(me, player)
-	children := make([]*GameState, len(acts))
+	acts := state.PlayerActions(player)
+	searchActs := make([]search.Action, len(acts))
+	children := make([]search.GameState, len(acts))
 	for i,a := range acts {
 		st := state.Clone()
 		st.TakeAction(a)
-		children[i] = st
+		searchActs[i] = a
+		children[i] = &GameState{*st}
 	}
-	return acts, children
+	return searchActs, children
 }
+
+func (state *GameState) FindBestAction(player int, depth int, timeBudget int64) (durak.Action, bool) {
+	st := state.Clone()
+	st.Mask(player)
+	state = &GameState{*st}
+	iface := search.SearchItDeep(state, player, depth, timeBudget)
+	act, ok := iface.(durak.Action)
+	return act, ok
+}
+

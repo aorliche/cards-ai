@@ -195,6 +195,10 @@ func InitGameState(nPlayers int) *GameState {
 
 func (state *GameState) AttackerActions(player int) []Action {
     res := make([]Action, 0)
+	// Deferring 
+	if state.Deferring[player] {
+		return res
+	}
     // Player has already passed
     if state.Passed[player] {
         return res
@@ -235,7 +239,7 @@ func (state *GameState) AttackerActions(player int) []Action {
         res = append(res, Action{player, PassVerb, NO_CARD, NO_CARD})
     }
     // For AI to not throw trumps away
-    if !state.PickingUp && len(state.Plays) > state.NumCovered() {
+    if !state.PickingUp && len(state.Plays) > 0 && len(state.Plays) > state.NumCovered() {
         res = append(res, Action{player, DeferVerb, NO_CARD, NO_CARD})    
     }
     return res
