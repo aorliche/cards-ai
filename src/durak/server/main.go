@@ -79,7 +79,7 @@ func (game *Game) Join(string) error {
 func (game *Game) Action(data string) error {
 	var act durak.Action
 	json.NewDecoder(bytes.NewBuffer([]byte(data))).Decode(&act)
-	actions := game.State.State.PlayerActions(act.Player)
+	actions := game.State.State.PlayerActions(act.Player, act.Player)
 	for _,a := range actions {
 		if a == act {
 			game.State.State.TakeAction(act)
@@ -103,7 +103,7 @@ func (game *Game) GetState(player int) (string, error) {
 		}
 	}
 	// Get player actions
-	game.State.Actions = game.State.State.PlayerActions(player)
+	game.State.Actions = game.State.State.PlayerActions(player, player)
 	data, err := json.Marshal(game.State)
 	game.State.State.Hands = hands
 	if err != nil {

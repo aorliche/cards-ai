@@ -10,6 +10,7 @@ type Verb int
 type Card int
 
 var UNK_CARD = Card(-1)
+var NO_CARD = Card(-2)
 
 const (
     PlayVerb Verb = iota
@@ -49,6 +50,9 @@ func (card Card) ToStr() string {
 }
 
 func (card Card) Beats(other Card, trump Card) bool {
+	if card == UNK_CARD || other == UNK_CARD {
+		return false
+	}
     if card.Suit() == trump.Suit() && card.Suit() != other.Suit() {
         return true
     }
@@ -118,10 +122,10 @@ type GameState struct {
 	CardsInDeck int
 }
 
-func NumNotUnk(cards []Card) int {
+func (state *GameState) NumCovered() int {
     res := 0
-    for _,c := range cards {
-        if c != UNK_CARD {
+    for _,c := range state.Covers {
+        if c != NO_CARD {
             res++
         }
     }
@@ -205,34 +209,34 @@ func (state *GameState) AttackerActions(player int) []Action {
             return res
         }
         for _,card := range state.Hands[player] {
-            res = append(res, Action{player, PlayVerb, card, UNK_CARD})
+            res = append(res, Action{player, PlayVerb, card, NO_CARD})
         }
         return res
     }
     // Don't allow playing more cards than defender can defend
-    unmetCards := len(state.Plays) - NumNotUnk(state.Covers)
+    unmetCards := len(state.Plays) - state.NumCovered()
     if len(state.Hands[state.Defender]) - unmetCards > 0 {
         for _,card := range state.Hands[player] {
             // Allow play unknown card in search
             if card == UNK_CARD {
-                res = append(res, Action{player, PlayVerb, card, UNK_CARD})
+                res = append(res, Action{player, PlayVerb, card, NO_CARD})
                 continue
             }
             // Regular cards
             for i := 0; i < len(state.Plays); i++ {
-                if card.Rank() == state.Plays[i].Rank() || (card != UNK_CARD && card.Rank() == state.Covers[i].Rank()) {
-                    res = append(res, Action{player, PlayVerb, card, UNK_CARD})
+                if card.Rank() == state.Plays[i].Rank() || (state.Covers[i] != UNK_CARD && state.Covers[i] != NO_CARD && card.Rank() == state.Covers[i].Rank()) {
+                    res = append(res, Action{player, PlayVerb, card, NO_CARD})
                     break
                 }
             }
         }
     }
-    if state.PickingUp || (NumNotUnk(state.Covers) == len(state.Plays) && len(state.Plays) > 0) {
-        res = append(res, Action{player, PassVerb, UNK_CARD, UNK_CARD})
+    if state.PickingUp || (state.NumCovered() == len(state.Plays) && len(state.Plays) > 0) {
+        res = append(res, Action{player, PassVerb, NO_CARD, NO_CARD})
     }
     // For AI to not throw trumps away
-    if !state.PickingUp && len(state.Plays) > NumNotUnk(state.Covers) {
-        res = append(res, Action{player, DeferVerb, UNK_CARD, UNK_CARD})    
+    if !state.PickingUp && len(state.Plays) > state.NumCovered() {
+        res = append(res, Action{player, DeferVerb, NO_CARD, NO_CARD})    
     }
     return res
 }
@@ -246,7 +250,7 @@ func (state *GameState) ReverseRank() int {
         if rank != state.Plays[i].Rank() {
             return -1
         }
-        if state.Covers[i] != UNK_CARD {
+        if state.Covers[i] != NO_CARD {
             return -1
         }
     }
@@ -260,30 +264,33 @@ func (state *GameState) DefenderActions(player int) []Action {
     }
     revRank := state.ReverseRank()
     // Only allow reverse when defender can potentially meet it
-    if revRank != -1 && NumNotUnk(state.Covers) == 0 && len(state.Plays)+1 <= len(state.Hands[state.Attacker]) {
+    if revRank != -1 && state.NumCovered() == 0 && len(state.Plays)+1 <= len(state.Hands[state.Attacker]) {
         for _,card := range state.Hands[player] {
             if card.Rank() == revRank {
-                res = append(res, Action{player, ReverseVerb, card, UNK_CARD})
+                res = append(res, Action{player, ReverseVerb, card, NO_CARD})
             }
         }
     }
     for i := 0; i < len(state.Plays); i++ {
+		if state.Covers[i] != NO_CARD {
+			continue
+		}
         for _,card := range state.Hands[player] {
             // For AI search allow cover with unknown card
-            if card == UNK_CARD || (state.Covers[i] == UNK_CARD && card.Beats(state.Plays[i], state.Trump)) {
+            if card == UNK_CARD || card.Beats(state.Plays[i], state.Trump) {
                 res = append(res, Action{player, CoverVerb, card, state.Plays[i]})
             }
         }
     }
-    if len(state.Plays) > 0 && NumNotUnk(state.Covers) < len(state.Plays) {
-        res = append(res, Action{player, PickUpVerb, UNK_CARD, UNK_CARD})
+    if len(state.Plays) > 0 && state.NumCovered() < len(state.Plays) {
+        res = append(res, Action{player, PickUpVerb, NO_CARD, NO_CARD})
     }
     return res
 }
 
-func (state *GameState) PlayerActions(player int) []Action {
+func (state *GameState) PlayerActions(me int, player int) []Action {
 	var acts []Action
-	hands := state.Mask(player)
+	hands := state.Mask(me)
     if player == state.Defender {
         acts = state.DefenderActions(player)
     } else {
@@ -361,7 +368,7 @@ func (state *GameState) TakeAction(action Action) {
     switch action.Verb {
         case PlayVerb: {
             state.Plays = append(state.Plays, action.Card)
-            state.Covers = append(state.Covers, UNK_CARD)
+            state.Covers = append(state.Covers, NO_CARD)
             RemoveCard(&state.Hands[action.Player], action.Card)
 			RemoveCard(&state.Known[action.Player], action.Card)
 			// Reset deferring
@@ -390,7 +397,7 @@ func (state *GameState) TakeAction(action Action) {
         }
         case ReverseVerb: {
             state.Plays = append(state.Plays, action.Card)
-            state.Covers = append(state.Covers, UNK_CARD)
+            state.Covers = append(state.Covers, NO_CARD)
             RemoveCard(&state.Hands[action.Player], action.Card)
 			RemoveCard(&state.Known[action.Player], action.Card)
             state.Attacker, state.Defender = state.Defender, state.Attacker
@@ -420,7 +427,7 @@ func (state *GameState) TakeAction(action Action) {
                 for i := 0; i < len(state.Plays); i++ {
                     state.Hands[state.Defender] = append(state.Hands[state.Defender], state.Plays[i])
 					state.Known[state.Defender] = append(state.Known[state.Defender], state.Plays[i])
-                    if state.Covers[i] != UNK_CARD {
+                    if state.Covers[i] != NO_CARD {
                         state.Hands[state.Defender] = append(state.Hands[state.Defender], state.Covers[i])
 						state.Known[state.Defender] = append(state.Known[state.Defender], state.Covers[i])
                     }
@@ -499,7 +506,7 @@ func (state *GameState) Mask(me int) [][]Card {
 func (state *GameState) AllActions() []Action {
 	acts := make([]Action, 0)
 	for i := 0; i < len(state.Hands); i++ {
-		acts = append(acts, state.PlayerActions(i)...)
+		acts = append(acts, state.PlayerActions(i, i)...)
 	}
 	return acts
 }

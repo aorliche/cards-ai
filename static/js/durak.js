@@ -197,7 +197,7 @@ window.addEventListener('load', () => {
 			const card = new Card(suit, rank);
 			new Stack({board, cards: [card]});
 
-			if (data.State.Covers[i] != -1) {
+			if (data.State.Covers[i] != -2) {
 				const cardIdx = data.State.Covers[i];
 				const suit = suits[Math.floor(cardIdx/9)];
 				const rank = ranks[cardIdx % 9];
@@ -211,17 +211,17 @@ window.addEventListener('load', () => {
 		// Show win message
 		if (data.State.Won[data.Player]) {
 			board.message = "You won!";
-		} 
-
-		// Show loss message
-		let winners = 0;
-		for (let i=0; i<data.State.Won.length; i++) {
-			if (data.State.Won[i]) {
-				winners++;
+		} else {
+			// Show loss message
+			let winners = 0;
+			for (let i=0; i<data.State.Won.length; i++) {
+				if (data.State.Won[i]) {
+					winners++;
+				}
 			}
-		}
-		if (winners == data.State.Won.length-1) {
-			board.message = "You lost...";
+			if (winners == data.State.Won.length-1) {
+				board.message = "You lost...";
+			}
 		}
 
 		// Display deck and trump
@@ -324,6 +324,7 @@ window.addEventListener('load', () => {
 			let underCard = null;
 			board.stacks.forEach(s => {
 				const xfms = s.getCardTransforms();
+				console.log(s);
 				for (let i=0; i<s.cards.length; i++) {
 					const p = point.matrixTransform(xfms[i].inverse());
 					if (p.x > 0 && p.x < s.cards[i].width && p.y > 0 && p.y < s.cards[i].height) {
@@ -346,7 +347,7 @@ window.addEventListener('load', () => {
 				for (let i=0; i<myActions.length; i++) {
 					const action = myActions[i];
 					const card = cardToIndex(hand.holding);
-					if (action.Card == card && action.Covering == -1) {
+					if (action.Card == card && action.Covering == -2) {
 						conn.send(JSON.stringify({'Type': 'Action', 'Game': gameId, 'Data': JSON.stringify(action)}));
 					}
 				}
