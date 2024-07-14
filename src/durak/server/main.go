@@ -15,7 +15,7 @@ import(
 // To give player index during update
 // As well as player names
 type GameState struct {
-	State *durak.GameState
+	durak.GameState
 	Player int
 	Names []string
 	Actions []durak.Action
@@ -26,7 +26,7 @@ type Game struct {
 	Key int
 	Players []*server.Player
 	// The actual game state
-	State GameState
+	State *GameState
 }
 
 func CreateGame() server.Game {
@@ -51,7 +51,7 @@ func (game *Game) HasOpenSlots() bool {
 }
 
 func (game *Game) IsOver() bool {
-	return game.State.State.IsOver()
+	return game.State.IsOver()
 }
 	
 func (game *Game) AddPlayer(player server.Player) {
@@ -67,7 +67,7 @@ func (game *Game) Init(string) error {
 	if n < 2 || n > 6 {
 		return errors.New("Bad number of players for Durak")
 	}
-	game.State.State = durak.InitGameState(n)
+	game.State = &GameState{*durak.InitGameState(n), 0, nil, nil}
 	// TODO start AI players
 	return nil
 }
@@ -79,10 +79,10 @@ func (game *Game) Join(string) error {
 func (game *Game) Action(data string) error {
 	var act durak.Action
 	json.NewDecoder(bytes.NewBuffer([]byte(data))).Decode(&act)
-	actions := game.State.State.PlayerActions(act.Player, act.Player)
+	actions := game.State.PlayerActions(act.Player)
 	for _,a := range actions {
 		if a == act {
-			game.State.State.TakeAction(act)
+			game.State.TakeAction(act)
 			return nil
 		}
 	}
@@ -90,7 +90,8 @@ func (game *Game) Action(data string) error {
 }
 
 func (game *Game) GetState(player int) (string, error) {
-	hands := game.State.State.Mask(player)
+	sav := game.State.Clone()
+	game.State.Mask(player)
 	// Set player
 	game.State.Player = player
 	// Add player names
@@ -103,9 +104,9 @@ func (game *Game) GetState(player int) (string, error) {
 		}
 	}
 	// Get player actions
-	game.State.Actions = game.State.State.PlayerActions(player, player)
-	data, err := json.Marshal(game.State)
-	game.State.State.Hands = hands
+	game.State.Actions = game.State.PlayerActions(player)
+	data, err := json.Marshal(*game.State)
+	game.State.GameState = *sav
 	if err != nil {
 		return "", err
 	}

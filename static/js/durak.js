@@ -90,7 +90,7 @@ window.addEventListener('load', () => {
 		playerId = data.Player;
 		myActions = data.Actions;
 		console.log(myActions);
-		const nh = data.State.Hands.length;
+		const nh = data.Hands.length;
 		let lrtbs = ['bottom', 'top'];
 		let offsets = [0, 0];
 		if (nh == 3) {
@@ -123,8 +123,8 @@ window.addEventListener('load', () => {
 			
 			// Update cards
 			hand.cards = [];
-			for (let k=0; k<data.State.Hands[j].length; k++) {
-				const cardIdx = data.State.Hands[j][k];
+			for (let k=0; k<data.Hands[j].length; k++) {
+				const cardIdx = data.Hands[j][k];
 				let suit, rank, card;
 				if (cardIdx == -1) {
 					suit = suits[0];
@@ -137,8 +137,10 @@ window.addEventListener('load', () => {
 					card = new Card(suit, rank);
 					card.visible = true;
 				}
+				// For switching visibility later
+				card.cardIdx = cardIdx;
 				// Don't show even known enemy cards
-				if (i != 0) {
+				if (i != 0 && !$('#show-known').checked) {
 					card.visible = false;
 				}
 				hand.cards.push(card);
@@ -152,15 +154,15 @@ window.addEventListener('load', () => {
 
 			hand.buttons = [];
 
-			if (data.State.Attacker == j) {
+			if (data.Attacker == j) {
 				hand.buttons.push(new Button({img: swordImg}));
-			} else if (data.State.Defender == j) {
+			} else if (data.Defender == j) {
 				hand.buttons.push(new Button({img: shieldImg}));
 			}
 
-			if (data.State.PickingUp && data.State.Defender == j) {
+			if (data.PickingUp && data.Defender == j) {
 				hand.buttons.push(new Button({text: 'Picking Up'}));
-			} else if (data.State.Passed[j]) {
+			} else if (data.Passed[j]) {
 				hand.buttons.push(new Button({text: 'Passed'}));
 			}
 		}
@@ -190,15 +192,15 @@ window.addEventListener('load', () => {
 		// Update stacks
 		board.stacks = [];
 
-		for (let i=0; i<data.State.Plays.length; i++) {
-			const cardIdx = data.State.Plays[i];
+		for (let i=0; i<data.Plays.length; i++) {
+			const cardIdx = data.Plays[i];
 			const suit = suits[Math.floor(cardIdx/9)];
 			const rank = ranks[cardIdx % 9];
 			const card = new Card(suit, rank);
 			new Stack({board, cards: [card]});
 
-			if (data.State.Covers[i] != -2) {
-				const cardIdx = data.State.Covers[i];
+			if (data.Covers[i] != -2) {
+				const cardIdx = data.Covers[i];
 				const suit = suits[Math.floor(cardIdx/9)];
 				const rank = ranks[cardIdx % 9];
 				const card = new Card(suit, rank);
@@ -209,23 +211,23 @@ window.addEventListener('load', () => {
 		board.message = "";
 
 		// Show win message
-		if (data.State.Won[data.Player]) {
+		if (data.Won[data.Player]) {
 			board.message = "You won!";
 		} else {
 			// Show loss message
 			let winners = 0;
-			for (let i=0; i<data.State.Won.length; i++) {
-				if (data.State.Won[i]) {
+			for (let i=0; i<data.Won.length; i++) {
+				if (data.Won[i]) {
 					winners++;
 				}
 			}
-			if (winners == data.State.Won.length-1) {
+			if (winners == data.Won.length-1) {
 				board.message = "You lost...";
 			}
 		}
 
 		// Display deck and trump
-		const cardIdx = data.State.Trump;
+		const cardIdx = data.Trump;
 		const suit = suits[Math.floor(cardIdx/9)];
 		const rank = ranks[cardIdx % 9];
 		const trump = new Card(suit, rank);
@@ -233,7 +235,7 @@ window.addEventListener('load', () => {
 		if (nh == 3) {
 			p = {x: 100, y: 300};
 		} 
-		board.deck = new Deck({trump, p, size: data.State.CardsInDeck});
+		board.deck = new Deck({trump, p, size: data.CardsInDeck});
 
 		board.draw();
 	}
@@ -397,5 +399,16 @@ window.addEventListener('load', () => {
 	
 	$('#medium').addEventListener('click', e => {
 		addPlayer('Medium');
+	});
+
+	$('#show-known').addEventListener('change', e => {
+		board.hands.forEach((h, idx) => {
+			if (idx > 0) {
+				h.cards.forEach(c => {
+					c.visible = c.cardIdx != -1 && $('#show-known').checked;
+				});
+			}
+		});
+		board.draw();
 	});
 });

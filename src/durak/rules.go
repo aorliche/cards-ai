@@ -288,15 +288,13 @@ func (state *GameState) DefenderActions(player int) []Action {
     return res
 }
 
-func (state *GameState) PlayerActions(me int, player int) []Action {
+func (state *GameState) PlayerActions(player int) []Action {
 	var acts []Action
-	hands := state.Mask(me)
     if player == state.Defender {
         acts = state.DefenderActions(player)
     } else {
         acts = state.AttackerActions(player)
     }
-	state.Hands = hands
 	return acts
 }
 
@@ -487,10 +485,8 @@ func (state *GameState) Clone() *GameState {
     }
 }
 
-func (state *GameState) Mask(me int) [][]Card {
-	sav := make([][]Card, len(state.Hands))
+func (state *GameState) Mask(me int) {
 	for i := 0; i < len(state.Hands); i++ {
-		sav[i] = state.Hands[i]
 		if i == me {
 			continue
 		}
@@ -500,13 +496,12 @@ func (state *GameState) Mask(me int) [][]Card {
 			state.Hands[i] = append(state.Hands[i], -1)
 		}
 	}
-	return sav
 }
 
 func (state *GameState) AllActions() []Action {
 	acts := make([]Action, 0)
 	for i := 0; i < len(state.Hands); i++ {
-		acts = append(acts, state.PlayerActions(i, i)...)
+		acts = append(acts, state.PlayerActions(i)...)
 	}
 	return acts
 }
