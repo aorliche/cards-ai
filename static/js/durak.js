@@ -89,7 +89,6 @@ window.addEventListener('load', () => {
 	function updateBoard(data) {
 		playerId = data.Player;
 		myActions = data.Actions;
-		console.log(myActions);
 		const nh = data.Hands.length;
 		let lrtbs = ['bottom', 'top'];
 		let offsets = [0, 0];
@@ -248,7 +247,6 @@ window.addEventListener('load', () => {
 
 	conn.onmessage = e => {
 		const json = JSON.parse(e.data);
-		console.log(json);
 		const data = json.Data ? JSON.parse(json.Data) : null;
 		switch (json.Type) {
 			case 'Error':
@@ -263,7 +261,6 @@ window.addEventListener('load', () => {
 				gameId = data;
 				break;
 			case 'Update':
-				console.log(data);
 				updateBoard(data);
 				break;
 			case 'Chat':
@@ -327,7 +324,6 @@ window.addEventListener('load', () => {
 			let underCard = null;
 			board.stacks.forEach(s => {
 				const xfms = s.getCardTransforms();
-				console.log(s);
 				for (let i=0; i<s.cards.length; i++) {
 					const p = point.matrixTransform(xfms[i].inverse());
 					if (p.x > 0 && p.x < s.cards[i].width && p.y > 0 && p.y < s.cards[i].height) {
