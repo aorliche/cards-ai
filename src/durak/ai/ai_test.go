@@ -34,6 +34,7 @@ func TestTwoPlayerGame(t *testing.T) {
 				if a == act {
 					log.Println(state.CardsInDeck, act.ToStr())
 					state.TakeAction(act)
+					server.UpdatePlayers(game)
 					break
 				}
 			}

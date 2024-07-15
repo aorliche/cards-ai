@@ -7,7 +7,9 @@ import(
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
+	"github.com/aorliche/cards-ai/durak/ai"
 	"github.com/aorliche/cards-ai/durak"
 	"github.com/aorliche/cards-ai/server"
 )
@@ -15,7 +17,7 @@ import(
 // To give player index during update
 // As well as player names
 type GameState struct {
-	durak.GameState
+	ai.GameState
 	Player int
 	Names []string
 	Actions []durak.Action
@@ -67,8 +69,35 @@ func (game *Game) Init(string) error {
 	if n < 2 || n > 6 {
 		return errors.New("Bad number of players for Durak")
 	}
-	game.State = &GameState{*durak.InitGameState(n), 0, nil, nil}
-	// TODO start AI players
+	// Horrible
+	game.State = &GameState{ai.GameState{*durak.InitGameState(n)}, 0, nil, nil}
+	// AI Logic
+	aiFunc := func (player int) {
+		for !game.State.IsOver() {
+			time.Sleep(200 * time.Millisecond)
+			act, ok := game.State.FindBestAction(player, 10, 100)
+			if !ok {
+				continue
+			}
+			game.Lock()
+			acts := game.State.PlayerActions(player)
+			for _,a := range acts {
+				if a == act {
+					log.Println(game.State.CardsInDeck, act.ToStr())
+					game.State.TakeAction(act)
+					server.UpdatePlayers(game)
+					break
+				}
+			}
+			game.Unlock()
+		}
+	}
+	// Start AI players
+	for i,p := range game.Players {
+		if p.Type == "Medium" {
+			go aiFunc(i)
+		}
+	}
 	return nil
 }
 
@@ -106,7 +135,7 @@ func (game *Game) GetState(player int) (string, error) {
 	// Get player actions
 	game.State.Actions = game.State.PlayerActions(player)
 	data, err := json.Marshal(*game.State)
-	game.State.GameState = *sav
+	game.State.GameState = ai.GameState{*sav}
 	if err != nil {
 		return "", err
 	}

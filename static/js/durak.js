@@ -263,6 +263,7 @@ window.addEventListener('load', () => {
 				gameId = data;
 				break;
 			case 'Update':
+				console.log(data);
 				updateBoard(data);
 				break;
 			case 'Chat':
