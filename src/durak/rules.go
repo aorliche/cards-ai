@@ -189,7 +189,7 @@ func InitGameState(nPlayers int) *GameState {
 		Known: known,
         Dir: 1,
 		Deck: deck,
-		CardsInDeck: len(deck)-ci,
+		CardsInDeck: 1, //len(deck)-ci,
     }
 }
 
@@ -490,6 +490,9 @@ func (state *GameState) Clone() *GameState {
 }
 
 func (state *GameState) Mask(me int) {
+	if len(state.Hands) == 2 && state.CardsInDeck <= 1 {
+		return
+	}
 	for i := 0; i < len(state.Hands); i++ {
 		if i == me {
 			continue

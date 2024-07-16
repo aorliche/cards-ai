@@ -17,8 +17,8 @@ func (state *GameState) NumPlayers() int {
 
 func (state *GameState) Eval(player int) float64 {
 	// Check my win
-	if state.CardsInDeck == 0 && len(state.Hands[player]) == 0 {
-		return 100.0
+	if state.Won[player] {
+		return 200.0
 	}
 	// My hand
 	hval := 0.0
@@ -26,13 +26,15 @@ func (state *GameState) Eval(player int) float64 {
 		if c == durak.UNK_CARD {
 			continue
 		} else if c.Suit() == state.Trump.Suit() {
-			hval += float64(c.Rank())
+			hval += 10.0*float64(c.Rank() + 1)
 		} else {
-			hval += float64(c.Rank() - 5)
+			hval += float64(c.Rank() - 6)
 		}
 	}
 	if state.CardsInDeck <= 3 {
 		hval -= 4.0*float64(len(state.Hands[player]))
+	} else {
+		hval -= 2.0*float64(len(state.Hands[player]))
 	}
 	// Other player's hands
 	ovals := make([]float64, 0)
@@ -42,21 +44,23 @@ func (state *GameState) Eval(player int) float64 {
 		}
 		v := 0.0
 		// Check other player's win
-		if state.CardsInDeck == 0 && len(h) == 0 {
-			ovals = append(ovals, 100.0)
+		if state.Won[i] {
+			ovals = append(ovals, 200.0)
 			continue
 		}
 		for _,c := range h {
 			if c == durak.UNK_CARD {
 				v += -4.0
 			} else if c.Suit() == state.Trump.Suit() {
-				v += float64(c.Rank())
+				v += 10.0*float64(c.Rank() + 1)
 			} else {
-				v += float64(c.Rank() - 5)
+				v += float64(c.Rank() - 6)
 			}
 		}
 		if state.CardsInDeck <= 3 {
 			v -= 4.0*float64(len(h))
+		} else {
+			v -= 2.0*float64(len(h))
 		}
 		ovals = append(ovals, v)
 	}

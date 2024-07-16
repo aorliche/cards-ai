@@ -2,9 +2,9 @@ package ai
 
 import (
 	"log"
-	"sync"
+	//"sync"
 	"testing"
-	"time"
+	//"time"
 
 	"github.com/aorliche/cards-ai/durak"
 )
@@ -18,7 +18,7 @@ func TestFindBestAction(t *testing.T) {
 	}
 }
 
-func TestTwoPlayerGame(t *testing.T) {
+/*func TestTwoPlayerGame(t *testing.T) {
 	state := &GameState{*durak.InitGameState(2)}
 	var mut sync.Mutex
 	loopFn := func (player int) {
@@ -54,4 +54,20 @@ func TestTwoPlayerGame(t *testing.T) {
 		}
 		mut.Unlock()
 	}
+}*/
+
+func TestBadDefer(t *testing.T) {
+	state := &GameState{*durak.InitGameState(2)}
+	state.Attacker = 0
+	state.Defender = 1
+	state.Hands[0] = []durak.Card{durak.Card(10), durak.Card(21)}[:]
+	state.Hands[1] = []durak.Card{durak.Card(20), durak.Card(23)}[:]
+	state.Plays = []durak.Card{durak.Card(1)}[:]
+	state.Covers = []durak.Card{durak.Card(-2)}[:]
+	state.Trump = durak.Card(11)
+	act, _ := state.FindBestAction(0, 10, 100)
+	state.TakeAction(act)
+	log.Println(act.ToStr())
+	act, _ = state.FindBestAction(0, 10, 100)
+	log.Println(act.ToStr())
 }

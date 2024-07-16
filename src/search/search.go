@@ -4,6 +4,8 @@ import (
 	//"log"
 	"math"
 	"time"
+
+	//"github.com/aorliche/cards-ai/durak"
 )
 
 type Action interface{}
@@ -12,80 +14,59 @@ type GameState interface {
 	NumPlayers() int
 	Eval(int) float64
 	Children(int) ([]Action, []GameState)
+	IsOver() bool
 }
 
 // Iterative deepening
 // Most general, no alpha-beta pruning
 func SearchItDeep(state GameState, player int, depth int, timeBudget int64) Action {
     startTime := time.Now()
-	actions, states := state.Children(player)
-	if len(actions) == 0 {
-		return nil
-	}
-	prevBestAction := Action(nil)
-	outer:
-	for d := 1; d < depth; d++ {
-		best := math.Inf(-1)
-		bestAction := Action(nil)
-		for i := 0; i < len(actions); i++ {
-			_, e, _, to := Search(states[i], player, d, startTime, timeBudget)
-			// Time exceeded
-			if to {
-				break outer
-			}
-			if e > best {
-				best = e
-				bestAction = actions[i]
-			}
+	best := Action(nil)
+	for d := 0; d < depth; d++ {
+		act, _, _, to := Search(state, player, d, startTime, timeBudget, true)
+		if to {
+			break
 		}
-		prevBestAction = bestAction
+		if act != nil {
+			best = act
+		}
 	}
-	return prevBestAction
+	return best
 }
 
 // Returns best action
 // Returns evaluation
 // Returns number of states searched
 // Returns whether it's been timed out
-func Search(state GameState, player int, depth int, startTime time.Time, timeBudget int64) (Action, float64, int, bool) {
+func Search(state GameState, player int, depth int, startTime time.Time, timeBudget int64, playerOnly bool) (Action, float64, int, bool) {
 	if depth == 0 {
 		return nil, state.Eval(player), 1, false
 	}
     if time.Since(startTime).Milliseconds() > timeBudget {
         return nil, 0, 0, true
     }
+	if state.IsOver() {
+		return nil, state.Eval(player), 1, false
+	}
 	ns := 0
 	best := math.Inf(-1)
-	bestMult := 1
 	bestAction := Action(nil)
 	for i := 0; i < state.NumPlayers(); i++ {
+		if playerOnly && i != player {
+			continue
+		}
 		actions, states := state.Children(i)
-		if len(actions) == 0 {
-			e := state.Eval(i)
+		for j := 0; j < len(actions); j++ {
+			_, e, n, to := Search(states[j], i, depth-1, startTime, timeBudget, false)
+			if to {
+				return nil, 0, 0, true
+			}
 			if e > best {
 				best = e
-				bestAction = nil
-				if i != player {
-					bestMult = -1
-				}
+				bestAction = actions[j]
 			}
-			ns += 1
-		} else {
-			for j := 0; j < len(actions); j++ {
-				_, e, n, to := Search(states[j], i, depth-1, startTime, timeBudget)
-				if to {
-					return nil, 0, 0, true
-				}
-				if e > best {
-					best = e
-					bestAction = actions[j]
-					if i != player {
-						bestMult = -1
-					}
-				}
-				ns += n
-			}
+			ns += n
 		}
 	}
-	return bestAction, best*float64(bestMult), ns, false
+	return bestAction, best, ns, false
 }

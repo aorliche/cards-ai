@@ -75,7 +75,10 @@ func (game *Game) Init(string) error {
 	aiFunc := func (player int) {
 		for !game.State.IsOver() {
 			time.Sleep(200 * time.Millisecond)
-			act, ok := game.State.FindBestAction(player, 10, 100)
+			game.Lock()
+			st := &ai.GameState{*game.State.Clone()}
+			game.Unlock()
+			act, ok := st.FindBestAction(player, 10, 2000)
 			if !ok {
 				continue
 			}
@@ -120,7 +123,7 @@ func (game *Game) Action(data string) error {
 
 func (game *Game) GetState(player int) (string, error) {
 	sav := game.State.Clone()
-	game.State.Mask(player)
+	//game.State.Mask(player)
 	// Set player
 	game.State.Player = player
 	// Add player names
