@@ -66,8 +66,7 @@ func TestBadDefer(t *testing.T) {
 	state.Covers = []durak.Card{durak.Card(-2)}[:]
 	state.Trump = durak.Card(11)
 	act, _ := state.FindBestAction(0, 10, 100)
-	state.TakeAction(act)
-	log.Println(act.ToStr())
-	act, _ = state.FindBestAction(0, 10, 100)
-	log.Println(act.ToStr())
+	if act.Verb != durak.DeferVerb {
+		t.Error("Didn't do correct defer, ", act.ToStr())
+	}
 }

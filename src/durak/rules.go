@@ -451,9 +451,14 @@ func (state *GameState) TakeAction(action Action) {
             state.Deferring[action.Player] = true
         }
     }
+	if !state.IsOver() {
+		if state.Won[state.Attacker] {
+			state.Passed[state.Attacker] = true
+		}
+	}
 	// Check for a winner being marked as attacker or defender
 	// This isn't necessary?
-	if !state.IsOver() {
+	/*if !state.IsOver() {
 		for state.Won[state.Attacker] || state.Attacker == state.Defender {
 			state.Attacker = state.NextRole(state.Attacker)
 			state.Defender = state.NextRole(state.Attacker)
@@ -461,7 +466,7 @@ func (state *GameState) TakeAction(action Action) {
 		for state.Won[state.Defender] {
 			state.Defender = state.NextRole(state.Defender)
 		}
-	}
+	}*/
 }
 
 func (state *GameState) Clone() *GameState {
