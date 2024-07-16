@@ -38,35 +38,41 @@ func SearchItDeep(state GameState, player int, depth int, timeBudget int64) Acti
 // Returns evaluation
 // Returns number of states searched
 // Returns whether it's been timed out
-func Search(state GameState, player int, depth int, startTime time.Time, timeBudget int64, playerOnly bool) (Action, float64, int, bool) {
+func Search(state GameState, player int, depth int, startTime time.Time, timeBudget int64, playerOnly bool) (Action, GameState, int, bool) {
 	if depth == 0 {
-		return nil, state.Eval(player), 1, false
+		return nil, state, 1, false
 	}
     if time.Since(startTime).Milliseconds() > timeBudget {
-        return nil, 0, 0, true
+        return nil, nil, 0, true
     }
 	if state.IsOver() {
-		return nil, state.Eval(player), 1, false
+		return nil, state, 1, false
 	}
 	ns := 0
 	best := math.Inf(-1)
 	bestAction := Action(nil)
+	bestState := GameState(nil)
 	for i := 0; i < state.NumPlayers(); i++ {
 		if playerOnly && i != player {
 			continue
 		}
 		actions, states := state.Children(i)
 		for j := 0; j < len(actions); j++ {
-			_, e, n, to := Search(states[j], i, depth-1, startTime, timeBudget, false)
+			_, s, n, to := Search(states[j], i, depth-1, startTime, timeBudget, false)
 			if to {
-				return nil, 0, 0, true
+				return nil, nil, 0, true
 			}
+			if s == nil {
+				continue
+			}
+			e := s.Eval(i)
 			if e > best {
 				best = e
 				bestAction = actions[j]
+				bestState = s
 			}
 			ns += n
 		}
 	}
-	return bestAction, best, ns, false
+	return bestAction, bestState, ns, false
 }

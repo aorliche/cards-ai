@@ -189,7 +189,7 @@ func InitGameState(nPlayers int) *GameState {
 		Known: known,
         Dir: 1,
 		Deck: deck,
-		CardsInDeck: 1, //len(deck)-ci,
+		CardsInDeck: len(deck)-ci,
     }
 }
 
