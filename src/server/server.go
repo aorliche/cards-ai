@@ -53,6 +53,8 @@ type Game interface {
 	Action(string) error
 	// Update info for player n
 	GetState(int) (string, error)
+	// Terminate game on player disconnect
+	Terminate()
 }
 
 // Hack
@@ -97,11 +99,20 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
+	var socketGame Game
 	player := -1
 	for {
 		msgType, msg, err := conn.ReadMessage()
 		if err != nil {
 			log.Println(err)
+			if socketGame != nil && player != -1 {
+				socketGame.Terminate()
+				for _,p := range socketGame.GetPlayers() {
+					if p.Conn != nil {
+						p.Conn.Close()
+					}
+				}
+			}
 			return  
 		}
 		// Do we ever get any other types of messages?
@@ -168,6 +179,10 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					log.Println("Error in game init")
 					log.Println(err)
+					jsn, _ := json.Marshal(err.Error())
+					reply := Reply{Type: "Error", Data: string(jsn)}
+					repJsn, _ := json.Marshal(reply)
+					conn.WriteMessage(websocket.TextMessage, repJsn);
 					continue
 				}
 				// Not protected by mutex because game only becomes visible here
@@ -177,6 +192,8 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 				reply := Reply{Type: "New", Data: string(jsn)}
 				repJsn, _ := json.Marshal(reply)
 				conn.WriteMessage(websocket.TextMessage, repJsn);
+				// For ending games on closed connections
+				socketGame = game
 				// Update single player
 				UpdatePlayers(game)
 			}
@@ -213,6 +230,8 @@ func Socket(w http.ResponseWriter, r *http.Request) {
 					conn.WriteMessage(websocket.TextMessage, repJsn);
 					UpdatePlayers(game)
 				}
+				// For ending games on closed connections
+				socketGame = game
 				game.Unlock()
 			}
 			case "Action": {

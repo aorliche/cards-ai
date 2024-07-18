@@ -29,10 +29,15 @@ type Game struct {
 	Players []*server.Player
 	// The actual game state
 	State *GameState
+	Terminated bool
 }
 
 func CreateGame() server.Game {
 	return &Game{Players: make([]*server.Player, 0)}
+}
+
+func (game *Game) Terminate() {
+	game.Terminated = true
 }
 
 func (game *Game) GetKey() int {
@@ -53,7 +58,7 @@ func (game *Game) HasOpenSlots() bool {
 }
 
 func (game *Game) IsOver() bool {
-	return game.State.IsOver()
+	return game.State.IsOver() || game.Terminated
 }
 	
 func (game *Game) AddPlayer(player server.Player) {
@@ -66,14 +71,14 @@ func (game *Game) GetPlayers() []*server.Player {
 
 func (game *Game) Init(string) error {
 	n := len(game.Players)
-	if n < 2 || n > 6 {
+	if n < 2 || n > 4 {
 		return errors.New("Bad number of players for Durak")
 	}
 	// Horrible
 	game.State = &GameState{ai.GameState{*durak.InitGameState(n)}, 0, nil, nil}
 	// AI Logic
 	aiFunc := func (player int) {
-		for !game.State.IsOver() {
+		for !game.IsOver() {
 			time.Sleep(200 * time.Millisecond)
 			game.Lock()
 			st := &ai.GameState{*game.State.Clone()}

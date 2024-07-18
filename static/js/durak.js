@@ -250,6 +250,7 @@ window.addEventListener('load', () => {
 		const data = json.Data ? JSON.parse(json.Data) : null;
 		switch (json.Type) {
 			case 'Error':
+				alert(json.Data);
 				break;
 			case 'List':
 				updateList(data);
