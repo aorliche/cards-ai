@@ -32,7 +32,7 @@ func (state *GameState) Eval(player int) float64 {
 		}
 	}
 	if state.CardsInDeck <= 3 {
-		hval -= 4.0*float64(len(state.Hands[player]))
+		hval -= 10.0*float64(len(state.Hands[player]))
 	} else {
 		hval -= 2.0*float64(len(state.Hands[player]))
 	}
@@ -58,7 +58,7 @@ func (state *GameState) Eval(player int) float64 {
 			}
 		}
 		if state.CardsInDeck <= 3 {
-			v -= 4.0*float64(len(h))
+			v -= 10.0*float64(len(h))
 		} else {
 			v -= 2.0*float64(len(h))
 		}
