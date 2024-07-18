@@ -1,7 +1,7 @@
 package ai
 
 import (
-	//"log"
+	"log"
 
 	"github.com/aorliche/cards-ai/search"
 	"github.com/aorliche/cards-ai/durak"
@@ -18,7 +18,7 @@ func (state *GameState) NumPlayers() int {
 func (state *GameState) Eval(player int) float64 {
 	// Check my win
 	if state.Won[player] {
-		return 200.0
+		return 500.0
 	}
 	// My hand
 	hval := 0.0
@@ -45,7 +45,7 @@ func (state *GameState) Eval(player int) float64 {
 		v := 0.0
 		// Check other player's win
 		if state.Won[i] {
-			ovals = append(ovals, 200.0)
+			ovals = append(ovals, 500.0)
 			continue
 		}
 		for _,c := range h {
@@ -103,8 +103,11 @@ func (state *GameState) FindBestAction(player int, depth int, timeBudget int64) 
 	st := state.Clone()
 	st.Mask(player)
 	state = &GameState{*st}
-	iface := search.SearchItDeep(state, player, depth, timeBudget)
+	iface, eval := search.SearchItDeep(state, player, depth, timeBudget)
 	act, ok := iface.(durak.Action)
+	if ok {
+		log.Println(eval)
+	}
 	return act, ok
 }
 

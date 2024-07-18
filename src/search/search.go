@@ -19,19 +19,25 @@ type GameState interface {
 
 // Iterative deepening
 // Most general, no alpha-beta pruning
-func SearchItDeep(state GameState, player int, depth int, timeBudget int64) Action {
+func SearchItDeep(state GameState, player int, depth int, timeBudget int64) (Action, float64) {
     startTime := time.Now()
 	best := Action(nil)
+	bestState := GameState(nil)
 	for d := 0; d < depth; d++ {
-		act, _, _, to := Search(state, player, d, startTime, timeBudget, true)
+		act, state, _, to := Search(state, player, d, startTime, timeBudget, true)
 		if to {
 			break
 		}
 		if act != nil {
 			best = act
+			bestState = state
 		}
 	}
-	return best
+	e := 0.0
+	if bestState != nil {
+		e = bestState.Eval(player)
+	}
+	return best, e
 }
 
 // Returns best action
