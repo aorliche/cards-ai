@@ -75,13 +75,13 @@ func (game *Game) Init(string) error {
 		return errors.New("Bad number of players for Durak")
 	}
 	// Horrible
-	game.State = &GameState{ai.GameState{*durak.InitGameState(n)}, 0, nil, nil}
+	game.State = &GameState{ai.GameState{*durak.InitGameState(n), nil}, 0, nil, nil}
 	// AI Logic
 	aiFunc := func (player int) {
 		for !game.IsOver() {
 			time.Sleep(200 * time.Millisecond)
 			game.Lock()
-			st := &ai.GameState{*game.State.Clone()}
+			st := &ai.GameState{*game.State.Clone(), nil}
 			game.Unlock()
 			act, ok := st.FindBestAction(player, 12, 2000)
 			if !ok {
@@ -143,7 +143,7 @@ func (game *Game) GetState(player int) (string, error) {
 	// Get player actions
 	game.State.Actions = game.State.PlayerActions(player)
 	data, err := json.Marshal(*game.State)
-	game.State.GameState = ai.GameState{*sav}
+	game.State.GameState = ai.GameState{*sav, nil}
 	if err != nil {
 		return "", err
 	}

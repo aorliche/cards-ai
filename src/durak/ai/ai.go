@@ -1,14 +1,33 @@
 package ai
 
 import (
-	"log"
+	//"log"
 
 	"github.com/aorliche/cards-ai/search"
 	"github.com/aorliche/cards-ai/durak"
 )
 
+type EvalParams struct {
+	WinBonus float64
+	TrumpBonus float64
+	NonTrumpPenalty float64
+	CardsInDeckCutoff int
+	SmallDeckHandPenalty float64
+	BigDeckHandPenalty float64
+	UnknownCardPenalty float64
+}
+
 type GameState struct {
 	durak.GameState
+	Params *EvalParams
+}
+
+var DefaultEvalParams = EvalParams{
+	500.0, 10.0, 6.0, 3, 10.0, 2.0, 4.0,
+}
+
+func (state *GameState) Clone2() *GameState {
+	return &GameState{*state.Clone(), state.Params}
 }
 
 func (state *GameState) NumPlayers() int {
@@ -16,9 +35,13 @@ func (state *GameState) NumPlayers() int {
 }
 
 func (state *GameState) Eval(player int) float64 {
+	params := state.Params
+	if params == nil {
+		params = &DefaultEvalParams
+	}
 	// Check my win
 	if state.Won[player] {
-		return 500.0
+		return params.WinBonus
 	}
 	// My hand
 	hval := 0.0
@@ -26,15 +49,15 @@ func (state *GameState) Eval(player int) float64 {
 		if c == durak.UNK_CARD {
 			continue
 		} else if c.Suit() == state.Trump.Suit() {
-			hval += 10.0*float64(c.Rank() + 1)
+			hval += params.TrumpBonus + float64(c.Rank())
 		} else {
-			hval += float64(c.Rank() - 6)
+			hval += float64(c.Rank()) - params.NonTrumpPenalty
 		}
 	}
-	if state.CardsInDeck <= 3 {
-		hval -= 10.0*float64(len(state.Hands[player]))
+	if state.CardsInDeck <= params.CardsInDeckCutoff {
+		hval -= params.SmallDeckHandPenalty*float64(len(state.Hands[player]))
 	} else {
-		hval -= 2.0*float64(len(state.Hands[player]))
+		hval -= params.BigDeckHandPenalty*float64(len(state.Hands[player]))
 	}
 	// Other player's hands
 	ovals := make([]float64, 0)
@@ -45,22 +68,22 @@ func (state *GameState) Eval(player int) float64 {
 		v := 0.0
 		// Check other player's win
 		if state.Won[i] {
-			ovals = append(ovals, 500.0)
+			ovals = append(ovals, params.WinBonus)
 			continue
 		}
 		for _,c := range h {
 			if c == durak.UNK_CARD {
-				v += -4.0
+				v += -params.UnknownCardPenalty
 			} else if c.Suit() == state.Trump.Suit() {
-				v += 10.0*float64(c.Rank() + 1)
+				v += params.TrumpBonus + float64(c.Rank())
 			} else {
-				v += float64(c.Rank() - 6)
+				v += float64(c.Rank()) - params.NonTrumpPenalty
 			}
 		}
-		if state.CardsInDeck <= 3 {
-			v -= 10.0*float64(len(h))
+		if state.CardsInDeck <= params.CardsInDeckCutoff {
+			v -= params.SmallDeckHandPenalty*float64(len(state.Hands[player]))
 		} else {
-			v -= 2.0*float64(len(h))
+			v -= params.BigDeckHandPenalty*float64(len(state.Hands[player]))
 		}
 		ovals = append(ovals, v)
 	}
@@ -91,10 +114,10 @@ func (state *GameState) Children(player int) ([]search.Action, []search.GameStat
 	searchActs := make([]search.Action, len(acts))
 	children := make([]search.GameState, len(acts))
 	for i,a := range acts {
-		st := state.Clone()
+		st := state.Clone2()
 		st.TakeAction(a)
 		searchActs[i] = a
-		children[i] = &GameState{*st}
+		children[i] = st
 	}
 	return searchActs, children
 }
@@ -102,12 +125,9 @@ func (state *GameState) Children(player int) ([]search.Action, []search.GameStat
 func (state *GameState) FindBestAction(player int, depth int, timeBudget int64) (durak.Action, bool) {
 	st := state.Clone()
 	st.Mask(player)
-	state = &GameState{*st}
-	iface, eval := search.SearchItDeep(state, player, depth, timeBudget)
+	state = &GameState{*st, state.Params}
+	iface, _ := search.SearchItDeep(state, player, depth, timeBudget)
 	act, ok := iface.(durak.Action)
-	if ok {
-		log.Println(eval)
-	}
 	return act, ok
 }
 

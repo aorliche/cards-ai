@@ -41,7 +41,7 @@ func SearchItDeep(state GameState, player int, depth int, timeBudget int64) (Act
 }
 
 // Returns best action
-// Returns evaluation
+// Returns state for best action
 // Returns number of states searched
 // Returns whether it's been timed out
 func Search(state GameState, player int, depth int, startTime time.Time, timeBudget int64, playerOnly bool) (Action, GameState, int, bool) {

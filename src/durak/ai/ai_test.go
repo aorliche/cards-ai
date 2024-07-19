@@ -2,15 +2,15 @@ package ai
 
 import (
 	"log"
-	//"sync"
+	"sync"
 	"testing"
-	//"time"
+	"time"
 
 	"github.com/aorliche/cards-ai/durak"
 )
 
 func TestFindBestAction(t *testing.T) {
-	state := &GameState{*durak.InitGameState(2)}
+	state := &GameState{*durak.InitGameState(2), nil}
 	log.Println(state.Trump)
 	for i := 0; i < 2; i++ {
 		act, ok := state.FindBestAction(i, 3, 1000)
@@ -18,8 +18,8 @@ func TestFindBestAction(t *testing.T) {
 	}
 }
 
-/*func TestTwoPlayerGame(t *testing.T) {
-	state := &GameState{*durak.InitGameState(2)}
+func TestTwoPlayerGame(t *testing.T) {
+	state := &GameState{*durak.InitGameState(2), nil}
 	var mut sync.Mutex
 	loopFn := func (player int) {
 		for !state.IsOver() {
@@ -34,7 +34,6 @@ func TestFindBestAction(t *testing.T) {
 				if a == act {
 					log.Println(state.CardsInDeck, act.ToStr())
 					state.TakeAction(act)
-					server.UpdatePlayers(game)
 					break
 				}
 			}
@@ -54,10 +53,10 @@ func TestFindBestAction(t *testing.T) {
 		}
 		mut.Unlock()
 	}
-}*/
+}
 
 func TestBadDefer(t *testing.T) {
-	state := &GameState{*durak.InitGameState(2)}
+	state := &GameState{*durak.InitGameState(2), nil}
 	state.Attacker = 0
 	state.Defender = 1
 	state.Hands[0] = []durak.Card{durak.Card(10), durak.Card(21)}[:]
