@@ -10,11 +10,10 @@ import (
 type EvalParams struct {
 	WinBonus float64
 	TrumpBonus float64
-	NonTrumpPenalty float64
+	UnknownCardValue float64
 	CardsInDeckCutoff int
 	SmallDeckHandPenalty float64
 	BigDeckHandPenalty float64
-	UnknownCardPenalty float64
 }
 
 type GameState struct {
@@ -23,7 +22,7 @@ type GameState struct {
 }
 
 var DefaultEvalParams = EvalParams{
-	500.0, 10.0, 6.0, 3, 15.0, 2.0, 4.0,
+	500.0, 25.0, 2.0, 3, 20.0, 5.0,
 }
 
 func (state *GameState) Clone2() *GameState {
@@ -32,6 +31,14 @@ func (state *GameState) Clone2() *GameState {
 
 func (state *GameState) NumPlayers() int {
 	return len(state.Hands)
+}
+
+func (state *GameState) Debug(player int) []int {
+	ints := make([]int, 0)
+	for _,c := range state.Hands[player] {
+		ints = append(ints, int(c))
+	}
+	return ints
 }
 
 func (state *GameState) Eval(player int) float64 {
@@ -45,23 +52,34 @@ func (state *GameState) Eval(player int) float64 {
 	}
 	// My hand
 	hval := 0.0
-	for _,c := range state.Hands[player] {
+	// Add pickup cards
+	h := append(make([]durak.Card, 0), state.Hands[player]...)
+	if state.PickingUp && player == state.Defender {
+		for i,c := range state.Plays {
+			h = append(h, c)
+			if state.Covers[i] != durak.NO_CARD {
+				h = append(h, state.Covers[i])
+			}
+		}
+	}
+	for _,c := range h {
 		if c == durak.UNK_CARD {
-			hval += -params.UnknownCardPenalty
-		} else if c.Suit() == state.Trump.Suit() {
-			hval += params.TrumpBonus + float64(c.Rank())
+			hval += params.UnknownCardValue
 		} else {
-			hval += float64(c.Rank()) - params.NonTrumpPenalty
+			hval += float64(c.Rank())
+		}
+		if c != durak.UNK_CARD && c.Suit() == state.Trump.Suit() {
+			hval += params.TrumpBonus
 		}
 	}
 	if state.CardsInDeck <= params.CardsInDeckCutoff {
-		hval -= params.SmallDeckHandPenalty*float64(len(state.Hands[player]))
+		hval -= params.SmallDeckHandPenalty*float64(len(h))
 	} else {
-		hval -= params.BigDeckHandPenalty*float64(len(state.Hands[player]))
+		hval -= params.BigDeckHandPenalty*float64(len(h))
 	}
 	// Other player's hands
 	ovals := make([]float64, 0)
-	for i,h := range state.Hands {
+	for i,hh := range state.Hands {
 		if i == player {
 			continue
 		}
@@ -71,19 +89,30 @@ func (state *GameState) Eval(player int) float64 {
 			ovals = append(ovals, params.WinBonus)
 			continue
 		}
+		// Add pickup cards
+		h := append(make([]durak.Card, 0), hh...)
+		if state.PickingUp && i == state.Defender {
+			for i,c := range state.Plays {
+				h = append(h, c)
+				if state.Covers[i] != durak.NO_CARD {
+					h = append(h, state.Covers[i])
+				}
+			}
+		}
 		for _,c := range h {
 			if c == durak.UNK_CARD {
-				v += -params.UnknownCardPenalty
-			} else if c.Suit() == state.Trump.Suit() {
-				v += params.TrumpBonus + float64(c.Rank())
+				v += params.UnknownCardValue
 			} else {
-				v += float64(c.Rank()) - params.NonTrumpPenalty
+				v += float64(c.Rank())
+			}
+			if c != durak.UNK_CARD && c.Suit() == state.Trump.Suit() {
+				v += params.TrumpBonus
 			}
 		}
 		if state.CardsInDeck <= params.CardsInDeckCutoff {
-			v -= params.SmallDeckHandPenalty*float64(len(state.Hands[player]))
+			v -= params.SmallDeckHandPenalty*float64(len(h))
 		} else {
-			v -= params.BigDeckHandPenalty*float64(len(state.Hands[player]))
+			v -= params.BigDeckHandPenalty*float64(len(h))
 		}
 		ovals = append(ovals, v)
 	}

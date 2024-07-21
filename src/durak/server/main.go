@@ -91,8 +91,8 @@ func (game *Game) Init(string) error {
 			acts := game.State.PlayerActions(player)
 			for _,a := range acts {
 				if a == act {
-					log.Println(game.State.CardsInDeck, act.ToStr())
 					game.State.TakeAction(act)
+					log.Println(game.State.CardsInDeck, act.ToStr())
 					server.UpdatePlayers(game)
 					break
 				}

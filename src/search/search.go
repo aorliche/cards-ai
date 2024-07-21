@@ -15,6 +15,7 @@ type GameState interface {
 	Eval(int) float64
 	Children(int) ([]Action, []GameState)
 	IsOver() bool
+	Debug(int) []int
 }
 
 // Iterative deepening
@@ -58,11 +59,15 @@ func Search(state GameState, player int, depth int, startTime time.Time, timeBud
 	best := math.Inf(-1)
 	bestAction := Action(nil)
 	bestState := GameState(nil)
+	allEmpty := true
 	for i := 0; i < state.NumPlayers(); i++ {
 		if playerOnly && i != player {
 			continue
 		}
 		actions, states := state.Children(i)
+		if len(actions) > 0 {
+			allEmpty = false
+		}
 		for j := 0; j < len(actions); j++ {
 			_, s, n, to := Search(states[j], i, depth-1, startTime, timeBudget, false)
 			if to {
@@ -79,6 +84,9 @@ func Search(state GameState, player int, depth int, startTime time.Time, timeBud
 			}
 			ns += n
 		}
+	}
+	if allEmpty {
+		return nil, state, 1, false
 	}
 	return bestAction, bestState, ns, false
 }
