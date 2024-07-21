@@ -94,7 +94,7 @@ func main() {
 			}
 			// Count winners
 			for i := 0; i < len(states); i++ {
-				if states[i].Won[1] {
+				if states[i].Won[0] {
 					w++
 				}
 			}
