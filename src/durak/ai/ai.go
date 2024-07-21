@@ -23,7 +23,7 @@ type GameState struct {
 }
 
 var DefaultEvalParams = EvalParams{
-	500.0, 10.0, 6.0, 3, 10.0, 2.0, 4.0,
+	500.0, 10.0, 6.0, 3, 15.0, 2.0, 4.0,
 }
 
 func (state *GameState) Clone2() *GameState {
@@ -47,7 +47,7 @@ func (state *GameState) Eval(player int) float64 {
 	hval := 0.0
 	for _,c := range state.Hands[player] {
 		if c == durak.UNK_CARD {
-			continue
+			hval += -params.UnknownCardPenalty
 		} else if c.Suit() == state.Trump.Suit() {
 			hval += params.TrumpBonus + float64(c.Rank())
 		} else {

@@ -150,6 +150,10 @@ func InitGameState(nPlayers int) *GameState {
 		return nil
 	}
 	deck := GenerateDeck()
+	// Generate UNK_DECK
+	for i := 0; i < len(deck); i++ {
+		UNK_DECK[i] = UNK_CARD
+	}
 	// Deal deck to players
 	hands := make([][]Card, nPlayers)
 	known := make([][]Card, nPlayers)
@@ -489,12 +493,19 @@ func (state *GameState) Clone() *GameState {
         Hands: hands,
 		Known: known,
         Dir: state.Dir,
-		Deck: state.Deck,
+		Deck: append(make([]Card, 0), state.Deck...),
 		CardsInDeck: state.CardsInDeck,
     }
 }
 
+var UNK_DECK = make([]Card, 36)
+
 func (state *GameState) Mask(me int) {
+	// Mask deck
+	if state.CardsInDeck > 1 {
+		state.Deck = UNK_DECK
+	}
+	// Mask hands
 	if len(state.Hands) == 2 && state.CardsInDeck <= 1 {
 		return
 	}
