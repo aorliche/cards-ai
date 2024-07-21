@@ -10,16 +10,13 @@ import (
 )
 
 var winBonus = []float64{500.0}
-var trumpBonus = []float64{5.0, 10.0, 15.0}
-var nonTrumpPenalty = []float64{2.0, 6.0, 10.0}
+var trumpBonus = []float64{15.0, 25.0, 35.0}
+var unknown = []float64{2.0}
 var cardsCutoff = []int{3}
-var smallDeck = []float64{5.0, 10.0, 15.0}
+var smallDeck = []float64{15.0, 20.0, 25.0}
 var bigDeck = []float64{2.0, 5.0, 10.0}
-var unknown = []float64{4.0}
 
-var labels = []string{"Trump Bonus", "Non Trump Penalty", "Small Deck Penalty", "Big Deck Penalty"}
-
-var nSimulGames = 6
+var nSimulGames = 10
 var nBatch = 3
 
 func main() {
@@ -27,9 +24,14 @@ func main() {
 		// Init game state
 		var mutex sync.Mutex
 		state := &ai.GameState{*durak.InitGameState(2), nil}
+		stime := time.Now()
 		// AI Logic
 		aiFunc := func (player int) {
 			for !state.IsOver() {
+				if time.Since(stime) > 600*time.Second {
+					log.Println("Timeout")
+					break
+				}
 				time.Sleep(200 * time.Millisecond)
 				mutex.Lock()
 				ps := params
@@ -59,19 +61,17 @@ func main() {
 		return state
 	}
 	winners := make(map[int]int)
-	for a := 0; a < 81; a++ {
+	for a := 0; a < 27; a++ {
 		a0 := a % 3
 		a1 := (a/3) % 3
 		a2 := (a/9) % 3
-		a3 := (a/27) % 3
 		params := &ai.EvalParams{
 			winBonus[0],
 			trumpBonus[a0],
-			nonTrumpPenalty[a1],
-			cardsCutoff[0],
-			smallDeck[a2],
-			bigDeck[a3],
 			unknown[0],
+			cardsCutoff[0],
+			smallDeck[a1],
+			bigDeck[a2],
 		}
 		w := 0
 		for b := 0; b < nBatch; b++ {
@@ -90,6 +90,7 @@ func main() {
 			}
 			for numActive() > 0 {
 				log.Println(numActive(), "still active")
+				log.Println(winners)
 				time.Sleep(200 * time.Millisecond)
 			}
 			// Count winners
