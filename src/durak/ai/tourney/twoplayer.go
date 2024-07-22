@@ -10,11 +10,11 @@ import (
 )
 
 var winBonus = []float64{500.0}
-var trumpBonus = []float64{15.0, 25.0, 35.0}
-var unknown = []float64{2.0}
-var cardsCutoff = []int{3}
-var smallDeck = []float64{15.0, 20.0, 25.0}
-var bigDeck = []float64{2.0, 5.0, 10.0}
+var trumpBonus = []float64{25.0}
+var unknown = []float64{2.0, 5.0, 10.0}
+var cardsCutoff = []int{1, 3, 5}
+var smallDeck = []float64{20.0}
+var bigDeck = []float64{5.0}
 
 var nSimulGames = 10
 var nBatch = 3
@@ -63,17 +63,16 @@ func main() {
 		return state
 	}
 	winners := make(map[int]int)
-	for a := 0; a < 27; a++ {
+	for a := 0; a < 9; a++ {
 		a0 := a % 3
 		a1 := (a/3) % 3
-		a2 := (a/9) % 3
 		params := &ai.EvalParams{
 			winBonus[0],
-			trumpBonus[a0],
-			unknown[0],
-			cardsCutoff[0],
-			smallDeck[a1],
-			bigDeck[a2],
+			trumpBonus[0],
+			unknown[a0],
+			cardsCutoff[a1],
+			smallDeck[0],
+			bigDeck[0],
 		}
 		w := 0
 		for b := 0; b < nBatch; b++ {
