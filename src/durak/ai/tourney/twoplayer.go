@@ -28,6 +28,8 @@ func main() {
 		// AI Logic
 		aiFunc := func (player int) {
 			for !state.IsOver() {
+				// If this triggers the for loop later will spin forever
+				// unless it's also timed out
 				if time.Since(stime) > 600*time.Second {
 					log.Println("Timeout")
 					break
@@ -88,10 +90,16 @@ func main() {
 				}
 				return n
 			}
+			stime := time.Now()
 			for numActive() > 0 {
 				log.Println(numActive(), "still active")
 				log.Println(winners)
+				// Time out if any of our AIs time out
 				time.Sleep(200 * time.Millisecond)
+				if time.Since(stime) > 600*time.Second {
+					log.Println("Timeout")
+					break
+				}
 			}
 			// Count winners
 			for i := 0; i < len(states); i++ {
