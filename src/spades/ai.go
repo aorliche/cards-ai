@@ -2,6 +2,7 @@ package spades
 
 import (
 	"math/rand/v2"
+	"sort"
 	"time"
 )
 
@@ -131,4 +132,98 @@ func ChooseWinningCard(cards []Card, wins []int, sims int) Card {
 		} 
 	}
 	return c
+}
+
+func (state *GameState) ChooseLowValueCard(player int) Card {
+	card := NO_CARD
+	val := -1.0
+	hand := make([]Card, len(state.Hands[player])-1)
+	for _,c := range state.Hands[player] {
+		count := 0
+		for i := 0; i < len(state.Hands[player]); i++ {
+			cc := state.Hands[player][i]
+			if cc == c {
+				continue
+			}
+			hand[count] = cc
+			count++
+		}
+		v := state.EvalHand(player, hand)
+		if card == NO_CARD || val > v {
+			val = v
+			card = c
+		}
+	}
+	return card
+}
+
+func (state *GameState) EvalHand(player int, hand []Card) float64 {
+	// See which players have gotten rid of which suits
+	noSuit := [4]int{}
+	for i := 0; i < 4; i++ {
+		if i == player {
+			continue
+		}
+		outer:
+		for suit := 0; suit < 4; suit++ {
+			if suit == SUIT_SPADES {
+				continue
+			}
+			for j := 0; j < 13; j++ {
+				card := suit*13 + j
+				if !state.Absent[player][i][card] {
+					continue outer
+				}
+			}
+			noSuit[suit]++
+		}
+	}
+	// Evaluations
+	evals := make([]float64, len(hand))
+	for _,c := range hand {
+		// Check how many higher rank cards than this are left
+		s := c.Suit()
+		n := 0
+		for i := c+1; i < 13; i++ {
+			cc := Card(s*13 + i)
+			if state.Absent[player][player][cc] {
+				n++
+			}
+		}
+
+	}
+	// Check for being close to being rid of a suit 
+	// Ignore King or highter
+	suits := [4]int{}[:]
+	for _,c := range state.Hands[player] {
+		suits[c.Suit()]++
+	}
+	sort.Ints(suits)
+	// Check if we can be first out of a suit
+	outer:
+	for suit := 0; suit < 4; suit++ {
+		if suit == SUIT_SPADES || suits[suit] == 0 {
+			continue
+		}
+		for i := 0; i < 4; i++ {
+			if i == player {
+				continue
+			}
+			if noSuit[i][suit] {
+				continue outer
+			}
+		}
+		if suits[suit] >= 3 {
+			break
+		}
+		minCard := 14
+		for _,c := range state.Hands[player] {
+			if c.Suit() == suit && int(c) < minCard {
+				minCard = int(c)
+			}
+		}
+		return Card(minCard)
+	}
+	// Get rid of any low rank cards
+
 }
