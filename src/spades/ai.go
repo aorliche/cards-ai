@@ -1,8 +1,8 @@
 package spades
 
 import (
+	"fmt"
 	"math/rand/v2"
-	"sort"
 	"time"
 )
 
@@ -13,6 +13,15 @@ func (state *GameState) SimulateHand(simulator int, simulated int) []Card {
 		if !state.Absent[simulator][simulated][i] {
 			possible = append(possible, Card(i))
 		}
+	}
+	// This used to be a problem when we incorrectly played spades
+	// but had first suit left
+	if hsize > len(possible) {
+		fmt.Println(simulator, simulated)
+		fmt.Println(state.Hands)
+		fmt.Println(possible)
+		fmt.Println(state.Absent[simulator][simulated])
+		panic("Bad possible size")
 	}
 	idcs := rand.Perm(len(possible))
 	hand := make([]Card, hsize)
@@ -47,6 +56,41 @@ func (state *GameState) TryWinTrick(player int) {
 	state.TakeAction(act)
 }
 
+// Simulate playing each card in hand
+func (state *GameState) DecidePlayFirst(timeBudget int64) Action {
+	hand := state.Hands[state.Attacker]
+	wins := make([]int, len(hand))
+	sims := 0
+	start := time.Now()
+	for i := 0; i < 100000; i++ {
+		if time.Since(start).Milliseconds() > timeBudget {
+			break
+		}
+		j := i % len(hand)
+		if j == 0 {
+			sims++
+		}
+		st := state.Clone()
+		c := hand[j]
+		act := Action{Verb: PlayVerb, Card: c, Player: state.Attacker}
+		st.TakeAction(act)
+		for k := 1; k < 4; k++ {
+			pp := (state.Attacker+k)%4
+			st.Hands[pp] = st.SimulateHand(state.Attacker, pp)
+			st.TryWinTrick(pp)
+		}
+		if state.Tricks[state.Attacker] != st.Tricks[state.Attacker] {
+			wins[j]++
+		}
+	}
+	c := ChooseWinningCard(hand, wins, sims)
+	// Decide none of the win percentages are good enough
+	if c == NO_CARD {
+		c = state.ChooseLowValueCard(state.Attacker)
+	}
+	return Action{Verb: PlayVerb, Player: state.Attacker, Card: c}
+}
+
 func (state *GameState) DecidePlayNotFirst(timeBudget int64) Action {
 	player := state.Attacker
 	for i := 0; i < 4; i++ {
@@ -56,9 +100,12 @@ func (state *GameState) DecidePlayNotFirst(timeBudget int64) Action {
 		}
 	}
 	// Find cards that win the trick so far
+	// Out of possible in player actions
 	possible := make([]Card, 0)
 	outer:
-	for _,c := range state.Hands[player] {
+	for _,a := range state.PlayerActions(player) {
+		c := a.Card
+		fmt.Println(c)
 		for i := 0; i < 4; i++ {
 			if !c.Beats(state.Trick[i], state.Trick[0].Suit()) {
 				continue outer
@@ -74,7 +121,7 @@ func (state *GameState) DecidePlayNotFirst(timeBudget int64) Action {
 	}
 	// We're the last to play and can just win the trick
 	if (player + 1)%4 == state.Attacker {
-		c := state.ChooseLowValueWinningCard(player)
+		c := state.ChooseLowValueWinningCard(possible)
 		return Action{Verb: PlayVerb, Player: player, Card: c}
 	}
 	// For each winning card, simulate the probability of it winning the trick
@@ -100,7 +147,7 @@ func (state *GameState) DecidePlayNotFirst(timeBudget int64) Action {
 			}
 		}
 		for k := 0; k < nPlayersSim; k++ {
-			pp := (player+i+1)%4
+			pp := (player+k+1)%4
 			st.Hands[pp] = st.SimulateHand(player, pp)
 			st.TryWinTrick(pp)
 		}
@@ -138,7 +185,8 @@ func (state *GameState) ChooseLowValueCard(player int) Card {
 	card := NO_CARD
 	val := -1.0
 	hand := make([]Card, len(state.Hands[player])-1)
-	for _,c := range state.Hands[player] {
+	for _,a := range state.PlayerActions(player) {
+		c := a.Card
 		count := 0
 		for i := 0; i < len(state.Hands[player]); i++ {
 			cc := state.Hands[player][i]
@@ -154,7 +202,19 @@ func (state *GameState) ChooseLowValueCard(player int) Card {
 			card = c
 		}
 	}
+	if card == NO_CARD {
+		panic("NO_CARD in ChooseLowValueCard")
+	}
 	return card
+}
+
+func Includes[T comparable](haystack []T, needle T) bool {
+	for _,t := range haystack {
+		if t == needle {
+			return true
+		}
+	}
+	return false
 }
 
 func (state *GameState) EvalHand(player int, hand []Card) float64 {
@@ -179,51 +239,81 @@ func (state *GameState) EvalHand(player int, hand []Card) float64 {
 		}
 	}
 	// Evaluations
-	evals := make([]float64, len(hand))
+	eval := 0
 	for _,c := range hand {
-		// Check how many higher rank cards than this are left
+		// Check how many cards higher rank than this are left
 		s := c.Suit()
 		n := 0
 		for i := c+1; i < 13; i++ {
-			cc := Card(s*13 + i)
-			if state.Absent[player][player][cc] {
+			cc := Card(s*13 + int(i))
+			// If it's known missing from our hand then it has been played
+			// Skip if we're the one holding the higher card
+			if state.Absent[player][player][cc] && !Includes(hand, cc) {
 				n++
 			}
 		}
-
+		val := 5 - 2*n - 4*noSuit[s]
+		eval += val
 	}
-	// Check for being close to being rid of a suit 
-	// Ignore King or highter
-	suits := [4]int{}[:]
-	for _,c := range state.Hands[player] {
-		suits[c.Suit()]++
-	}
-	sort.Ints(suits)
-	// Check if we can be first out of a suit
-	outer:
-	for suit := 0; suit < 4; suit++ {
-		if suit == SUIT_SPADES || suits[suit] == 0 {
+	// Check if we're close to being out of a suit
+	for s := 0; s < 4; s++ {
+		if s == SUIT_SPADES {
 			continue
 		}
-		for i := 0; i < 4; i++ {
-			if i == player {
-				continue
-			}
-			if noSuit[i][suit] {
-				continue outer
-			}
-		}
-		if suits[suit] >= 3 {
-			break
-		}
-		minCard := 14
-		for _,c := range state.Hands[player] {
-			if c.Suit() == suit && int(c) < minCard {
-				minCard = int(c)
+		n := 0
+		for _,c := range hand {
+			ss := c.Suit()
+			if s == ss {
+				n++
 			}
 		}
-		return Card(minCard)
+		if noSuit[s] == 0 {
+			if n <= 3 {
+				eval += 10 - 3*n;
+			}
+		} else if noSuit[s] == 1 {
+			if n <= 2 {
+				eval += 5 - 2*n;
+			}
+		}
 	}
-	// Get rid of any low rank cards
+	return float64(eval);
+}
 
+func (state *GameState) ChooseLowValueWinningCard(possible []Card) Card {
+	// Choose non-spades
+	choice := NO_CARD
+	for _,c := range possible {
+		if c.Suit() == SUIT_SPADES {
+			continue
+		}
+		if choice == NO_CARD || c.Rank() < choice.Rank() {
+			choice = c
+		}
+	}
+	if choice != NO_CARD {
+		return choice
+	}
+	// Choose spades
+	for _,c := range possible {
+		if choice == NO_CARD || c.Rank() < choice.Rank() {
+			choice = c
+		}
+	}
+	return choice 
+}
+
+func (state *GameState) CheckAbsentCompatible() {
+	for p,hand := range state.Hands {
+		for _,c := range hand {
+			for i := 0; i < 4; i++ {
+				if state.Absent[i][p][int(c)] {
+					fmt.Println(i, p, int(c))
+					fmt.Println(state.Hands)
+					fmt.Println(state.Absent[i][p])
+					panic("not compatible")
+				}
+			}
+		}
+	}
 }

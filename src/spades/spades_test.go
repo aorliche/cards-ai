@@ -2,6 +2,7 @@ package spades
 
 import (
 	assert "gotest.tools/v3/assert"
+	"fmt"
 	"testing"
 )
 
@@ -57,7 +58,12 @@ func TestOneAction(t *testing.T) {
 	assert.Assert(t, cop.Trick[0] != state.Trick[0], "Clone stacks alias")
 }
 
-func TestGameToCompletion(t *testing.T) {
+func TestBadWinner(t *testing.T) {
+	trick := Trick([4]Card{34, 35, 18, 17})
+	assert.Equal(t, trick.Winner(), 2)
+}
+
+/*func TestGameToCompletion(t *testing.T) {
 	state := InitGameState()
 	count := 0
 	for !state.IsOver() && count < 1000 {
@@ -80,4 +86,36 @@ func TestGameToCompletion(t *testing.T) {
 			}
 		}
 	}
+}*/
+
+func TestGameAIToCompletion(t *testing.T) {
+	state := InitGameState()
+	savState := state.Clone()
+	count := 0
+	var act Action
+	// Everyone make random bids
+	for i := 0; i < 4; i++ {
+		acts := state.CurrentActions()
+		if len(acts) == 0 {
+			t.Errorf("%v", state)
+		}
+		fmt.Println(acts[0].ToStr())
+		state.TakeAction(acts[0])
+		count++
+	}
+	for !state.IsOver() && count < 1000 {
+		act = state.DecidePlayFirst(100)
+		fmt.Println(act.ToStr())
+		state.TakeAction(act)
+		state.CheckAbsentCompatible()
+		for i := 0; i < 3; i++ {
+			act = state.DecidePlayNotFirst(100)
+			fmt.Println(act.ToStr())
+			state.TakeAction(act)
+			state.CheckAbsentCompatible()
+		}
+	}
+	fmt.Println(savState.Hands)
+	fmt.Println(state.Tricks)
+	assert.Assert(t, count != 1000, "Game never finished")
 }

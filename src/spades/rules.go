@@ -1,8 +1,10 @@
 package spades
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand/v2"
+	"sort"
 )
 
 type Verb int
@@ -76,6 +78,9 @@ func (card Card) Beats(other Card, firstSuit int) bool {
 	if card.Suit() != SUIT_SPADES && other.Suit() == SUIT_SPADES {
 		return false
 	}
+	if card.Suit() == SUIT_SPADES && other.Suit() == SUIT_SPADES {
+		return card.Rank() > other.Rank()
+	}
 	if card.Suit() == firstSuit && other.Suit() != firstSuit {
 		return true
 	}
@@ -122,6 +127,11 @@ func InitGameState() *GameState {
 		player := i / 13
 		hands[player][i%13] = Card(deck[i])
 	}
+	for _,h := range hands {
+		sort.Slice(h, func (a int, b int) bool {
+			return h[a] < h[b]
+		})
+	}
 	bids := [4]int{-1,-1,-1,-1}
 	tricks := [4]int{}
 	st := &GameState{
@@ -157,6 +167,17 @@ func (state *GameState) Clone() *GameState {
 		Trick: state.Trick,
 		Absent: state.Absent,
 	}
+}
+
+func (a Action) ToStr() string {
+    mp := map[string]any {
+        "Player": a.Player,
+        "Verb": verbs[a.Verb],
+        "Card": a.Card,
+        "Bid": a.Bid,
+    }
+    jsn, _ := json.Marshal(mp)
+    return string(jsn)
 }
 
 func (state *GameState) PlayerActions(player int) []Action {
@@ -230,7 +251,7 @@ func (state *GameState) TakeAction(act Action) {
 		if act.Card.Suit() != state.Trick[0].Suit() {
 			for i := 0; i < 4; i++ {
 				for j := 0; j < 13; j++ {
-					k := j + 13*act.Card.Suit()
+					k := j + 13*state.Trick[0].Suit()
 					state.Absent[i][act.Player][k] = true
 				}
 			}
