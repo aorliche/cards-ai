@@ -93,17 +93,13 @@ func TestGameAIToCompletion(t *testing.T) {
 	savState := state.Clone()
 	count := 0
 	var act Action
-	// Everyone make random bids
 	for i := 0; i < 4; i++ {
-		acts := state.CurrentActions()
-		if len(acts) == 0 {
-			t.Errorf("%v", state)
-		}
-		fmt.Println(acts[0].ToStr())
-		state.TakeAction(acts[0])
-		count++
+		b := state.DecideBids(i, 300)
+		act := Action{Verb: BidVerb, Player: i, Bid: b}
+		state.TakeAction(act)
 	}
 	for !state.IsOver() && count < 1000 {
+		state.CheckAbsentCompatible()
 		act = state.DecidePlayFirst(100)
 		fmt.Println(act.ToStr())
 		state.TakeAction(act)
@@ -116,6 +112,7 @@ func TestGameAIToCompletion(t *testing.T) {
 		}
 	}
 	fmt.Println(savState.Hands)
+	fmt.Println(state.Bids)
 	fmt.Println(state.Tricks)
 	assert.Assert(t, count != 1000, "Game never finished")
 }

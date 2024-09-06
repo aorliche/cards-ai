@@ -6,6 +6,63 @@ import (
 	"time"
 )
 
+func (state *GameState) DecidePlayFirstFast() Action {
+	// Check if you have a high card where all others have been played
+	for _,c := range state.Hands[state.Attacker] {
+		s := c.Suit()
+		r := c.Rank()
+		absent := true
+		for rr := r+1; rr < 13; rr++ {
+			cc := rr + (s*13)
+			if !state.Absent[state.Attacker][state.Attacker][cc] && 
+				!Includes(state.Hands[state.Attacker], Card(cc)) {
+				absent = false
+				break
+			}
+		}
+		if absent {
+			return Action{Verb: PlayVerb, Player: state.Attacker, Card: c}
+		}
+	}
+	// Else choose a low card to return
+	c := state.ChooseLowValueCard(state.Attacker)
+	return Action{Verb: PlayVerb, Player: state.Attacker, Card: c}
+}
+
+func (state *GameState) DecideBids(player int, timeBudget int64) int {
+	start := time.Now()
+	sims := 0
+	tricks := 0
+	for time.Since(start).Milliseconds() < timeBudget {
+		t := state.SimulateGame(player)
+		tricks += t
+		sims++
+	}
+	return tricks/sims
+}
+
+// Simulate game to see how many tricks won by player
+func (state *GameState) SimulateGame(player int) int {
+	st := state.Clone()
+	for i := 0; i < 4; i++ {
+		if (i == player) {
+			continue
+		}
+		st.Hands[i] = st.SimulateHand(player, i) 
+	}
+	st.Bids = [4]int{0,0,0,0}
+	for !st.IsOver() {
+		attacker := st.Attacker
+		act := st.DecidePlayFirstFast()
+		st.TakeAction(act)
+		for i := 1; i < 4; i++ {
+			p := (attacker+i)%4
+			st.TryWinTrick(p)
+		}
+	}
+	return st.Tricks[player]
+}
+
 func (state *GameState) SimulateHand(simulator int, simulated int) []Card {
 	hsize := len(state.Hands[simulated])
 	possible := make([]Card, 0)
@@ -14,14 +71,22 @@ func (state *GameState) SimulateHand(simulator int, simulated int) []Card {
 			possible = append(possible, Card(i))
 		}
 	}
-	// This used to be a problem when we incorrectly played spades
-	// but had first suit left
-	if hsize > len(possible) {
-		fmt.Println(simulator, simulated)
-		fmt.Println(state.Hands)
-		fmt.Println(possible)
-		fmt.Println(state.Absent[simulator][simulated])
-		panic("Bad possible size")
+	// Dirty hack
+	// Only seems to happen at the very end of the game
+	if len(possible) < hsize {
+		for i := 0; i < 4; i++ {
+			for j := 0; j < 4; j++ {
+				for c := 0; c < 52; c++ {
+					if !state.Absent[i][j][c] {
+						possible = append(possible, Card(c))
+					}
+				}
+			}
+		}
+	}
+	// Dirtier hack so no random crashes in server
+	if len(possible) < hsize {
+		possible = state.Hands[simulated]
 	}
 	idcs := rand.Perm(len(possible))
 	hand := make([]Card, hsize)
@@ -105,7 +170,7 @@ func (state *GameState) DecidePlayNotFirst(timeBudget int64) Action {
 	outer:
 	for _,a := range state.PlayerActions(player) {
 		c := a.Card
-		fmt.Println(c)
+		//fmt.Println(c)
 		for i := 0; i < 4; i++ {
 			if !c.Beats(state.Trick[i], state.Trick[0].Suit()) {
 				continue outer
