@@ -99,6 +99,8 @@ func TestGameAIToCompletion(t *testing.T) {
 		state.TakeAction(act)
 	}
 	for !state.IsOver() && count < 1000 {
+		fmt.Println("new hand")
+		fmt.Println(state.Hands)
 		state.CheckAbsentCompatible()
 		act = state.DecidePlayFirst(100)
 		fmt.Println(act.ToStr())

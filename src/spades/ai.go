@@ -71,9 +71,12 @@ func (state *GameState) SimulateHand(simulator int, simulated int) []Card {
 			possible = append(possible, Card(i))
 		}
 	}
+	if len(possible) < hsize {
+		return nil
+	}
 	// Dirty hack
 	// Only seems to happen at the very end of the game
-	if len(possible) < hsize {
+	/*if len(possible) < hsize {
 		for i := 0; i < 4; i++ {
 			for j := 0; j < 4; j++ {
 				for c := 0; c < 52; c++ {
@@ -87,7 +90,7 @@ func (state *GameState) SimulateHand(simulator int, simulated int) []Card {
 	// Dirtier hack so no random crashes in server
 	if len(possible) < hsize {
 		possible = state.Hands[simulated]
-	}
+	}*/
 	idcs := rand.Perm(len(possible))
 	hand := make([]Card, hsize)
 	for i := 0; i < hsize; i++ {
@@ -139,10 +142,22 @@ func (state *GameState) DecidePlayFirst(timeBudget int64) Action {
 		c := hand[j]
 		act := Action{Verb: PlayVerb, Card: c, Player: state.Attacker}
 		st.TakeAction(act)
-		for k := 1; k < 4; k++ {
-			pp := (state.Attacker+k)%4
-			st.Hands[pp] = st.SimulateHand(state.Attacker, pp)
-			st.TryWinTrick(pp)
+		outer:
+		for tries := 0; tries < 10; tries++ {
+			for k := 1; k < 4; k++ {
+				pp := (state.Attacker+k)%4
+				// Sometimes simulating a hand leads to bad results at the end
+				// I think that we may do something like taking a player's final
+				// possible card
+				st.Hands[pp] = st.SimulateHand(state.Attacker, pp)
+				if st.Hands[pp] == nil {
+					st = state.Clone()
+					st.TakeAction(act)
+					continue outer
+				}
+				st.TryWinTrick(pp)
+			}
+			break
 		}
 		if state.Tricks[state.Attacker] != st.Tricks[state.Attacker] {
 			wins[j]++
@@ -170,7 +185,6 @@ func (state *GameState) DecidePlayNotFirst(timeBudget int64) Action {
 	outer:
 	for _,a := range state.PlayerActions(player) {
 		c := a.Card
-		//fmt.Println(c)
 		for i := 0; i < 4; i++ {
 			if !c.Beats(state.Trick[i], state.Trick[0].Suit()) {
 				continue outer
