@@ -1,4 +1,4 @@
-export {$, $$, drawText};
+export {$, $$, circShift, drawText};
 
 const $ = q => document.querySelector(q);
 const $$ = q => [...document.querySelectorAll(q)];
@@ -21,4 +21,14 @@ function drawText(ctx, text, p, color, font, stroke) {
 	}
 	ctx.restore();
 	return tm;
+}
+
+function circShift(arr, n) {
+	n = n % arr.length;
+	const narr = [];
+	for (let i=0; i<arr.length; i++) {
+		const j = (n + i)%arr.length;
+		narr[i] = arr[j];
+	}
+	return narr;
 }

@@ -194,6 +194,10 @@ func (state *GameState) PlayerActions(player int) []Action {
 			return acts
 		}
 	}
+	// Wait for everyone to bid
+	if state.Bids[3] == -1 {
+		return acts
+	}
 	// Play cards
 	for i := 0; i < 4; i++ {
 		j := (state.Attacker + i) % 4
@@ -294,4 +298,14 @@ func (state *GameState) CurrentActions() []Action {
 		acts = append(acts, state.PlayerActions(i)...)
 	}
 	return acts
+}
+
+func (state *GameState) Mask(player int) {
+	for i,hand := range state.Hands {
+		if i != player {
+			for j := 0; j < len(hand); j++ {
+				hand[j] = UNK_CARD;
+			}
+		}
+	}
 }

@@ -1,6 +1,6 @@
-export {loadCardImages, onLoaded, loadImage, Button, Stack, Card, Hand, Board, Deck};
+export {loadCardImages, onLoaded, loadImage, Button, Stack, CircleStack, Card, Hand, Board, Deck};
 
-import {drawText} from './util.js';
+import {circShift, drawText} from './util.js';
 
 const cardImages = {};
 let imagesLoaded = 0;
@@ -213,6 +213,85 @@ class Stack {
 			}
 		}
 	}
+
+	get width() {
+		if (this.cards.length == 0) return 20;
+		return this.cards.length*(this.cards[0].width+this.dx);
+	}
+}
+
+class CircleStack {
+	constructor(params) {
+		this.board = params.board;
+		if (!this.board) {
+			throw Error('Stack constructor not passed board');
+		}
+		this.board.stacks.push(this);
+		this.ctx = this.board.ctx;
+		this.cards = params.cards ?? [];
+		this.start = params.start ?? 0;
+		this.inc = params.inc ?? Math.PI/2;
+	}
+
+	get pushx() {
+		if (this.cards.length == 0) return [];
+		const c = this.cards[0];
+		return circShift([0, c.width, c.width, 0], this.start);
+	}
+
+	get pushy() {
+		if (this.cards.length == 0) return [];
+		const c = this.cards[0];
+		return circShift([0, 0, c.width, c.width], this.start);
+	}
+	
+	get stackIndex() {
+		for (let i=0; i<this.board.stacks.length; i++) {
+			if (this.board.stacks[i] == this) return i;
+		}
+		return -1;
+	}
+
+	getCardTransforms() {
+		// Make cards bigger
+		/*for (let i=0; i<this.cards.length; i++) {
+			this.cards[i].width=100;
+		}*/
+		const sxfm = this.board.getStackTransforms()[this.stackIndex];
+		if (!sxfm) {
+			return null;
+		}
+		const xfms = [];
+		for (let i=0; i<this.cards.length; i++) {
+			const c = this.cards[0];
+			this.ctx.save();
+			this.ctx.setTransform(sxfm);
+			this.ctx.translate(c.width/3, c.height/3);
+			this.ctx.translate(this.pushx[i], this.pushy[i]);
+			this.ctx.rotate((this.start + i)*this.inc);
+			xfms.push(this.ctx.getTransform());
+			this.ctx.restore();
+		}
+		return xfms;
+	}
+
+	draw() {
+		const xfms = this.getCardTransforms();
+		if (xfms) {
+			for (let i=0; i<xfms.length; i++) {
+				this.ctx.save();
+				this.ctx.setTransform(xfms[i]);
+				this.cards[i].draw(this.ctx);
+				this.ctx.restore();
+			}
+		}
+	}
+	
+	get width() {
+		if (this.cards.length == 0) return 20;
+		return 2*this.cards[0].height-this.cards[0].width+20;
+	}
+
 }
 
 class Deck {
@@ -267,13 +346,23 @@ class Board {
 		const p = [0];
 		for (let i=0; i<n; i++) {
 			if (this.stacks[i].cards.length > 0) {
-				w = this.stacks[i].cards[0].width;
-				h = this.stacks[i].cards[0].height;
+				if (this.stacks[i] instanceof CircleStack) {
+					const c = this.stacks[i].cards[0];
+					w = 2*c.height-c.width;
+					h = w;
+				} else {
+					w = this.stacks[i].cards[0].width;
+					h = this.stacks[i].cards[0].height;
+				}
 				break;
 			}
 		}
 		for (let i=0; i<n; i++) {
-			p.push(p.at(-1) + w + 20);
+			if (this.stacks[0] instanceof CircleStack) {
+				p.push(p.at(-1) + w);
+			} else {
+				p.push(p.at(-1) + w + 20);
+			}
 		}
 		const dx = this.canvas.width/2 - p.at(-1)/2;
 		const dy = this.canvas.height/2 - h/2;
