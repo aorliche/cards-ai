@@ -189,5 +189,5 @@ func main() {
 	})
 	server.CreateGameFunc = CreateGame
     http.HandleFunc("/ws", server.Socket)
-    log.Fatal(http.ListenAndServe(":8011", nil))
+    log.Fatal(http.ListenAndServe(":8004", nil))
 }
