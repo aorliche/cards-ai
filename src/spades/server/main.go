@@ -93,6 +93,9 @@ func (game *Game) Init(string) error {
 				}
 				act = spades.Action{Verb: spades.BidVerb, Player: player, Bid: b, Card: spades.NO_CARD}
 			} else if st.Trick[0] == spades.NO_CARD && st.Attacker == player {
+				if st.PrevTrick[0] != spades.NO_CARD {
+					time.Sleep(2000 * time.Millisecond)
+				}
 				act = st.DecidePlayFirst(100)
 			} else {
 				i := (player + 4 - st.Attacker) % 4

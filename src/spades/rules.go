@@ -32,6 +32,8 @@ type GameState struct {
 	Bids [4]int
 	Tricks [4]int
 	Attacker int
+	PrevAttacker int
+	PrevTrick Trick
 	Trick Trick
 	// Known absent cards (according to each player)
 	Absent [4][4][52]bool
@@ -139,6 +141,7 @@ func InitGameState() *GameState {
 		Bids: bids,
 		Tricks: tricks,
 		Attacker: 0,
+		PrevTrick: InitTrick(),
 		Trick: InitTrick(),
 	}
 	for i := 0; i < 4; i++ {
@@ -164,6 +167,8 @@ func (state *GameState) Clone() *GameState {
 		Bids: state.Bids,
 		Tricks: state.Tricks,
 		Attacker: state.Attacker,
+		PrevAttacker: state.PrevAttacker,
+		PrevTrick: state.PrevTrick,
 		Trick: state.Trick,
 		Absent: state.Absent,
 	}
@@ -278,6 +283,8 @@ func (state *GameState) TakeAction(act Action) {
 		win := state.Trick.Winner()
 		win = (win + state.Attacker) % 4
 		state.Tricks[win]++
+		state.PrevAttacker = state.Attacker
+		state.PrevTrick = state.Trick
 		state.Attacker = win
 		state.Trick = InitTrick()
 	}

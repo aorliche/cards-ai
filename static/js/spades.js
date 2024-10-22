@@ -68,7 +68,7 @@ window.addEventListener('load', () => {
 	
 	const canvas = $('#board');
 	const board = new Board({canvas});
-	const swordImg = loadImage('/images/sword.png');
+	//const swordImg = loadImage('/images/sword.png');
 	
 	// Dummy hand
 	function makeDummyHand() {
@@ -148,7 +148,7 @@ window.addEventListener('load', () => {
 		});*/
 	}
 
-	makeDummyHand();
+	//makeDummyHand();
 
 	// board.draw() won't show anything until images load
 	onLoaded(() => board.draw());
@@ -183,6 +183,8 @@ window.addEventListener('load', () => {
 			div.appendChild(odiv);
 		}
 	}
+
+	let stackQueue = [];
 	
 	// Update board
 	// Go clockwise from bottom
@@ -300,26 +302,52 @@ window.addEventListener('load', () => {
 
 		// Update stacks
 		board.stacks = [];
+		const prevCards = [];
 		const cards = [];
+		let gotNew = true;
 
 		for (let i=0; i<4; i++) {
 			const cardIdx = data.Trick[i];
+			const prevCardIdx = data.PrevTrick[i];
 			if (cardIdx >= 0) {
+				gotNew = false;
 				const suit = suits[Math.floor(cardIdx/13)];
 				const rank = ranks[cardIdx % 13];
 				const card = new Card(suit, rank);
 				card.visible = true;
 				cards.push(card);
 			}
+			if (prevCardIdx > 0) {
+				const suit = suits[Math.floor(prevCardIdx/13)];
+				const rank = ranks[prevCardIdx % 13];
+				const card = new Card(suit, rank);
+				card.visible = true;
+				prevCards.push(card);
+			}
 		}
 
-		const stack = new CircleStack({
-			board, 
-			cards: cards,
-			start: (playerId + data.Attacker)%4,
-		});
+		if (gotNew) {
+			const stackPrev = new CircleStack({
+				board, 
+				cards: prevCards,
+				start: (data.PrevAttacker - playerId)%4,
+			});
 
-		board.stacks.push(stack);
+			board.stacks.push(stackPrev);
+
+			setTimeout(() => {
+				board.stacks = [];
+				board.draw();
+			}, 1000);
+		} else {
+			const stackNew = new CircleStack({
+				board, 
+				cards: cards,
+				start: (data.Attacker - playerId)%4,
+			});
+
+			board.stacks.push(stackNew);
+		}
 
 		board.message = "";
 

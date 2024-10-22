@@ -359,7 +359,7 @@ class Board {
 		}
 		for (let i=0; i<n; i++) {
 			if (this.stacks[0] instanceof CircleStack) {
-				p.push(p.at(-1) + w);
+				p.push(p.at(-1) + w/2);
 			} else {
 				p.push(p.at(-1) + w + 20);
 			}
