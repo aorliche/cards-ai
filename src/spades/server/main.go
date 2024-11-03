@@ -85,7 +85,7 @@ func (game *Game) Init(string) error {
 				break
 			}
 			var act spades.Action
-			if st.Bids[player] == -1 {
+			if st.Bids[player] == -1 && len(st.PlayerActions(player)) > 0 {
 				b := st.DecideBids(player, 100)
 				// Computers are conservative
 				if b > 0 {
